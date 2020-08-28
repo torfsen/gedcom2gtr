@@ -284,6 +284,7 @@ def _child_node(person: Person, max_generations: int = -1) -> str:
 def _parent_node(
     person: Person,
     include_siblings: bool = True,
+    include_ancestor_siblings: bool = True,
     max_generations: int = -1,
 ) -> str:
     child_family = person.child_family
@@ -293,7 +294,12 @@ def _parent_node(
     parts = [
         f'parent[{child_family.make_gtr_options()}]{{',
         person.to_gtr('g', True),
-        _parent_node_body(person, include_siblings, max(-1, max_generations - 1)),
+        _parent_node_body(
+            person,
+            include_siblings,
+            include_ancestor_siblings,
+            max(-1, max_generations - 1),
+        ),
         '}',
     ]
     return ''.join(parts)
@@ -302,12 +308,21 @@ def _parent_node(
 def _parent_node_body(
     person: Person,
     include_siblings: bool,
+    include_ancestor_siblings: bool,
     max_generations: int,
 ) -> str:
     parts = []
     if person.child_family and max_generations != 0:
         for parent in person.child_family.parents:
-            parts.append(_parent_node(parent, include_siblings, max_generations))
+            parts.append(_parent_node(
+                parent,
+                include_ancestor_siblings,  # After the first level
+                                            # there is no difference
+                                            # between siblings and
+                                            # ancestor siblings
+                include_ancestor_siblings,
+                max_generations,
+            ))
         if include_siblings:
             for child in person.child_family.children:
                 if child != person:
@@ -318,6 +333,7 @@ def _parent_node_body(
 def sandclock(
     person: Person,
     include_siblings: bool = True,
+    include_ancestor_siblings: bool = True,
     max_ancestor_generations: int = -1,
     max_descendant_generations: int = -1,
 ) -> str:
@@ -329,7 +345,12 @@ def sandclock(
     return ''.join([
         f'sandclock{options}{{',
         _child_node(person, max_descendant_generations),
-        _parent_node_body(person, include_siblings, max_ancestor_generations),
+        _parent_node_body(
+            person,
+            include_siblings,
+            include_ancestor_siblings,
+            max_ancestor_generations,
+        ),
         '}',
     ])
 
@@ -400,6 +421,7 @@ if __name__ == '__main__':
     print(sandclock(
         person,
         include_siblings,
+        include_ancestor_siblings,
         max_ancestor_generations,
         max_descendant_generations,
     ))
