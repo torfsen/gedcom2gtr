@@ -1,4 +1,6 @@
 /venv/
+/example.pdf
+/example.graph
 
 .*.sw?
 *.aux
