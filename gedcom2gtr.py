@@ -17,8 +17,9 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from ged4py.calendar import CalendarDate
 from ged4py.date import DateValue, DateValueVisitor
-from ged4py.model import Individual
+from ged4py.model import Individual, Record
 from ged4py.parser import GedcomReader
 
 
@@ -52,52 +53,73 @@ class GtrDateFormatter(DateValueVisitor):
     """
     Visitor class that produces GTR string representation of dates.
     """
-    def visitSimple(self, date):
+    def visitSimple(self, date: DateValue) -> str:
         return self._format_date(date.date)
 
-    def visitPeriod(self, date):
+    def visitPeriod(self, date: DateValue) -> str:
         return f'{self._format_date(date.date1)}/{self._format_date(date.date2)}'
 
     visitRange = visitPeriod
 
-    def visitFrom(self, date):
+    def visitFrom(self, date: DateValue) -> str:
         return f'{self._format_date(date.date)}/'
 
     visitAfter = visitFrom
 
-    def visitTo(self, date):
+    def visitTo(self, date: DateValue) -> str:
         return f'/{self._format_date(date.date)}'
 
     visitBefore = visitTo
 
-    def visitAbout(self, date):
+    def visitAbout(self, date: DateValue) -> str:
         return self._format_date(date.date, True)
 
     visitCalculated = visitAbout
     visitEstimated = visitAbout
     visitInterpreted = visitAbout
 
-    def visitPhrase(self, date):
-        return None
+    def visitPhrase(self, date: DateValue) -> str:
+        return ''
 
-    def format(self, date_value) -> str:
-        return date_value.accept(self)
+    def format(self, date: DateValue) -> str:
+        return date.accept(self)
 
-    def _format_date(self, date, uncertain: bool = False) -> str:
-        calender = 'AD'
-        year = date.year
-        if year < 0:
-            year = -year
-            calender = 'BC'
+    def _format_date(self, date: CalendarDate, uncertain: bool = False) -> str:
+        calendar = 'BC' if date.bc else 'AD'
         if uncertain:
-            calender = f'ca{calender}'
-        parts = [str(year)]
+            calendar = f'ca{calendar}'
+        parts = [str(date.year)]
         if date.month:
             parts.append(f'{_MONTH_NAME_TO_NUMBER[date.month]:02d}')
             if date.day:
                 parts.append(f'{date.day:02d}')
         timestamp = '-'.join(parts)
-        return f'({calender}){timestamp}'
+        return f'({calendar}){timestamp}'
+
+
+_date_formatter = GtrDateFormatter()
+
+
+@dataclass
+class Event:
+    date: Optional[DateValue]
+    place: Optional[str]
+
+    @classmethod
+    def from_record(cls, record: Optional[Record]) -> 'Event':
+        return cls(
+            record.sub_tag_value('DATE') if record else None,
+            record.sub_tag_value('PLAC') if record else None,
+        )
+
+    def __bool__(self):
+        return bool(self.date or self.place)
+
+    def to_gtr(self) -> Tuple[str, str]:
+        date = _date_formatter.format(self.date) if self.date else ''
+        if self.place:
+            return '', f'{{{date}}}{{{self.place}}}'
+        return '-', f'{{{date}}}'
 
 
 @dataclass
@@ -108,16 +130,15 @@ class Person:
     child_family: Optional['Family']
 
     @classmethod
-    def from_indi(cls, indi) -> 'Person':
+    def from_record(cls, record: Record) -> 'Person':
         """
         Create a person from a ``ged4py`` individual.
         """
-        date_formatter = GtrDateFormatter()
         gtr_fields = {}
 
         names = {
             name_record.type: name_record.value[:2]
-            for name_record in indi.sub_tags('NAME')
+            for name_record in record.sub_tags('NAME')
         }
         for key in ['maiden', 'birth', None, 'married']:
             name = names.get(key)
@@ -125,22 +146,21 @@ class Person:
                 gtr_fields['name'] = rf'{{\pref{{{name[0] or "?"}}} \surn{{{name[1] or "?"}}}}}'
                 break
 
-        birth_date = indi.sub_tag_value('BIRT/DATE')
-        if birth_date:
-            gtr_fields['birth-'] = f'{{{date_formatter.format(birth_date)}}}'
-        # TODO: Support for birth location
+        for key, tag in [
+            ('birth', 'BIRT'),
+            ('death', 'DEAT'),
+        ]:
+            event = Event.from_record(record.sub_tag(tag))
+            if event:
+                modifier, value = event.to_gtr()
+                gtr_fields[f'{key}{modifier}'] = value
 
-        death_date = indi.sub_tag_value('DEAT/DATE')
-        if death_date:
-            gtr_fields['death-'] = f'{{{date_formatter.format(death_date)}}}'
-        # TODO: Support for death location
-
-        sex = indi.sub_tag_value('SEX')
+        sex = record.sub_tag_value('SEX')
         if sex:
             gtr_fields['sex'] = '{female}' if sex == 'F' else '{male}'
 
         return cls(
-            indi.xref_id.replace('@', ''),
+            record.xref_id.replace('@', ''),
             gtr_fields,
             [],
             None,
@@ -198,15 +218,8 @@ def load_gedcom(fn: Path) -> Tuple[List[Person], List[Family]]:
     with GedcomReader(fn) as reader:
         # First pass, create persons
         for indi in reader.records0('INDI'):
-            #print(indi)
-            person = Person.from_indi(indi)
+            person = Person.from_record(indi)
             indi_to_person[indi.xref_id] = person
-            #print(person.to_gtr('g'))
-            #print()
-
-        #print()
-        #print('***')
-        #print()
 
         # Second pass, create families
         for fam in reader.records0('FAM'):
