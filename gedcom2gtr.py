@@ -202,11 +202,17 @@ class Family:
     id: str
     parents: List[Person]
     children: List[Person]
+    marriage: Event
 
     def __repr__(self):
         return f'<{self.__class__.__name__} id={self.id!r}>'
 
-    # TODO: Support for marriage event
+    def make_gtr_options(self) -> str:
+        option_parts = [f'id={self.id}']
+        if self.marriage:
+            modifier, value = self.marriage.to_gtr()
+            option_parts.append(f'family database={{marriage{modifier}={value}}}')
+        return ','.join(option_parts)
 
 
 def load_gedcom(fn: Path) -> Tuple[List[Person], List[Family]]:
@@ -232,10 +238,12 @@ def load_gedcom(fn: Path) -> Tuple[List[Person], List[Family]]:
                 indi_to_person[indi.xref_id]
                 for indi in fam.sub_tags('CHIL')
             ]
+            marriage = Event.from_record(fam.sub_tag('MARR'))
             family = Family(
                 fam.xref_id.replace('@', ''),
                 parents,
                 children,
+                marriage,
             )
             families.append(family)
             for parent in parents:
@@ -261,7 +269,7 @@ def _child_node(person: Person, max_generations: int = -1) -> str:
         # No known spouse/children or recursion limit reached
         return person.to_gtr('c', True)
     parts = [
-        f'child[id={parent_family.id}]{{',
+        f'child[{parent_family.make_gtr_options()}]{{',
         person.to_gtr('g', True),
     ]
     for parent in parent_family.parents:
@@ -283,7 +291,7 @@ def _parent_node(
         # Parents unknown or recursion limit reached
         return person.to_gtr('p', True)
     parts = [
-        f'parent[id={child_family.id}]{{',
+        f'parent[{child_family.make_gtr_options()}]{{',
         person.to_gtr('g', True),
         _parent_node_body(person, include_siblings, max(-1, max_generations - 1)),
         '}',
@@ -315,7 +323,9 @@ def sandclock(
 ) -> str:
     options = ''
     if person.child_family:
-        options = f'[id={person.child_family.id}]'
+        options = person.child_family.make_gtr_options()
+    if options:
+        options = f'[{options}]'
     return ''.join([
         f'sandclock{options}{{',
         _child_node(person, max_descendant_generations),
