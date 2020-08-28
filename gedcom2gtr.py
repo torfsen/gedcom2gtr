@@ -13,12 +13,16 @@ popular file format for storing genealogical information).
 from dataclasses import dataclass
 import datetime as dt
 from enum import Enum
+import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from ged4py.date import DateValue, DateValueVisitor
 from ged4py.model import Individual
 from ged4py.parser import GedcomReader
+
+
+log = logging.getLogger('gedcom2gtr')
 
 
 # The gtr-package only supports a certain subset of family trees. In
@@ -158,6 +162,20 @@ class Person:
     def __repr__(self):
         return f'<{self.__class__.__name__} id={self.id!r}>'
 
+    def count_ancestor_generations(self) -> int:
+        num = -1
+        if self.child_family:
+            for parent in self.child_family.parents:
+                num = max(num, parent.count_ancestor_generations())
+        return num + 1
+
+    def count_descendant_generations(self) -> int:
+        num = -1
+        for parent_family in self.parent_families:
+            for child in parent_family.children:
+                num = max(num, child.count_descendant_generations())
+        return num + 1
+
 
 @dataclass
 class Family:
@@ -224,9 +242,10 @@ def get_parent_family(person: Person) -> Optional[Family]:
         return person.parent_families[0]
 
 
-def child_node(person: Person) -> str:
+def _child_node(person: Person, max_generations: int = -1) -> str:
     parent_family = get_parent_family(person)
-    if not parent_family:
+    if not parent_family or max_generations == 0:
+        # No known spouse/children or recursion limit reached
         return person.to_gtr('c', True)
     parts = [
         f'child[id={parent_family.id}]{{',
@@ -236,45 +255,125 @@ def child_node(person: Person) -> str:
         if parent != person:
             parts.append(parent.to_gtr('p', True))
     for child in parent_family.children:
-        parts.append(child_node(child))
+        parts.append(_child_node(child, max(-1, max_generations - 1)))
     parts.append('}')
     return ''.join(parts)
 
 
-def parent_node(person: Person) -> str:
+def _parent_node(
+    person: Person,
+    include_siblings: bool = True,
+    max_generations: int = -1,
+) -> str:
     child_family = person.child_family
-    if not child_family:
+    if not child_family or max_generations == 0:
+        # Parents unknown or recursion limit reached
         return person.to_gtr('p', True)
     parts = [
         f'parent[id={child_family.id}]{{',
         person.to_gtr('g', True),
-        _parent_node_body(person),
+        _parent_node_body(person, include_siblings, max(-1, max_generations - 1)),
         '}',
     ]
     return ''.join(parts)
 
 
-def _parent_node_body(person: Person) -> str:
+def _parent_node_body(
+    person: Person,
+    include_siblings: bool,
+    max_generations: int,
+) -> str:
     parts = []
-    if person.child_family:
+    if person.child_family and max_generations != 0:
         for parent in person.child_family.parents:
-            parts.append(parent_node(parent))
-        for child in person.child_family.children:
-            if child != person:
-                parts.append(child.to_gtr('c', True))
+            parts.append(_parent_node(parent, include_siblings, max_generations))
+        if include_siblings:
+            for child in person.child_family.children:
+                if child != person:
+                    parts.append(child.to_gtr('c', True))
     return ''.join(parts)
 
 
-def sandclock_node(person: Person) -> str:
+def sandclock(
+    person: Person,
+    include_siblings: bool = True,
+    max_ancestor_generations: int = -1,
+    max_descendant_generations: int = -1,
+) -> str:
     return ''.join([
         'sandclock{',
-        child_node(person),
-        _parent_node_body(person),
+        _child_node(person, max_descendant_generations),
+        _parent_node_body(person, include_siblings, max_ancestor_generations),
         '}',
     ])
 
 
 if __name__ == '__main__':
+    log.addHandler(logging.StreamHandler())
+    log.setLevel(logging.DEBUG)
+
     import sys
     persons, families = load_gedcom(sys.argv[1])
-    print(sandclock_node(persons[0]))
+    person = persons[5]
+
+    # Whether to include the siblings of the person and their ancestors
+    include_siblings = True
+
+    # How many ancestor generations to include
+    #
+    # ``-1`` includes all known ancestor generations, and ``0`` includes
+    # no ancestor generations at all.
+    max_ancestor_generations = 2
+
+    # How many descendant generations to include
+    #
+    # ``-1`` includes all known descendant generations, and ``0``
+    # includes no descendant generations at all.
+    max_descendant_generations = 2
+
+    # Whether to dynamically adjust generation limits
+    #
+    # If this setting is true, then the limits for the number of shown
+    # ancestor and descendant generations are adjusted dynamically if
+    # one of them is not reached. For example, if
+    # ``max_descendant_generations`` is set to 3 but the target person
+    # only has 1 descendant generation then ``max_ancestor_generations``
+    # is increased by 2, showing more ancestor generations instead. This
+    # is useful for persons at the former and latter ends of the tree if
+    # your goal is to produce graphs with a maximum number of total
+    # generations.
+    dynamic_generation_limits = False
+
+    if dynamic_generation_limits:
+        num_ancestor_generations = person.count_ancestor_generations()
+        log.debug(f'{num_ancestor_generations} ancestor generations')
+        num_descendant_generations = person.count_descendant_generations()
+        log.debug(f'{num_descendant_generations} descendant generations')
+
+        if (
+            (num_ancestor_generations > max_ancestor_generations)
+            ==  (num_descendant_generations > max_descendant_generations)
+        ):
+            # Limit is broken in neither direction or in both directions
+            pass
+        elif num_ancestor_generations > max_ancestor_generations:
+            remaining = max_descendant_generations - num_descendant_generations
+            if remaining:
+                log.debug(
+                    f'Dynamically increasing max_ancestor_gerations by {remaining}'
+                )
+                max_ancestor_generations += remaining
+        else:  # num_descendant_generations > max_descendant_generations
+            remaining = max_ancestor_generations - num_ancestor_generations
+            if remaining:
+                log.debug(
+                    f'Dynamically increasing max_descendant_gerations by {remaining}'
+                )
+                max_descendant_generations += remaining
+
+    print(sandclock(
+        person,
+        include_siblings,
+        max_ancestor_generations,
+        max_descendant_generations,
+    ))
