@@ -300,8 +300,11 @@ def sandclock(
     max_ancestor_generations: int = -1,
     max_descendant_generations: int = -1,
 ) -> str:
+    options = ''
+    if person.child_family:
+        options = f'[id={person.child_family.id}]'
     return ''.join([
-        'sandclock{',
+        f'sandclock{options}{{',
         _child_node(person, max_descendant_generations),
         _parent_node_body(person, include_siblings, max_ancestor_generations),
         '}',
