@@ -5,7 +5,7 @@
 #    pip-compile dev-requirements.in
 #
 backcall==0.2.0           # via ipython
-click==7.1.2              # via pip-tools
+click==7.1.2              # via -c requirements.txt, pip-tools
 decorator==4.4.2          # via ipython, traitlets
 ipdb==0.13.3              # via -r dev-requirements.in
 ipython-genutils==0.2.0   # via traitlets

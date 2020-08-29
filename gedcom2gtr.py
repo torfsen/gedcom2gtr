@@ -15,8 +15,10 @@ import datetime as dt
 from enum import Enum
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+import sys
+from typing import BinaryIO, Dict, List, Optional, TextIO, Tuple, Union
 
+import click
 from ged4py.calendar import CalendarDate
 from ged4py.date import DateValue, DateValueVisitor
 from ged4py.model import Individual, Record
@@ -215,17 +217,19 @@ class Family:
         return ','.join(option_parts)
 
 
-def load_gedcom(fn: Path) -> Tuple[List[Person], List[Family]]:
+def load_gedcom(
+    f: Union[Path, BinaryIO],
+) -> Tuple[Dict[str, Person], Dict[str, Family]]:
     # ged4py 0.2.2 has problems with hashing, see
     # https://github.com/andy-z/ged4py/issues/22
     # Our workaround is to use the xref_id instead.
-    indi_to_person = {}
-    families = []
-    with GedcomReader(fn) as reader:
+    id_to_person = {}
+    id_to_family = {}
+    with GedcomReader(f) as reader:
         # First pass, create persons
         for indi in reader.records0('INDI'):
             person = Person.from_record(indi)
-            indi_to_person[indi.xref_id] = person
+            id_to_person[person.id] = person
 
         # Second pass, create families
         for fam in reader.records0('FAM'):
@@ -233,9 +237,9 @@ def load_gedcom(fn: Path) -> Tuple[List[Person], List[Family]]:
             for tag in ['HUSB', 'WIFE']:
                 indi = fam.sub_tag(tag)
                 if indi:
-                    parents.append(indi_to_person[indi.xref_id])
+                    parents.append(id_to_person[indi.xref_id.replace('@', '')])
             children = [
-                indi_to_person[indi.xref_id]
+                id_to_person[indi.xref_id.replace('@', '')]
                 for indi in fam.sub_tags('CHIL')
             ]
             marriage = Event.from_record(fam.sub_tag('MARR'))
@@ -245,14 +249,14 @@ def load_gedcom(fn: Path) -> Tuple[List[Person], List[Family]]:
                 children,
                 marriage,
             )
-            families.append(family)
+            id_to_family[family.id] = family
             for parent in parents:
                 parent.parent_families.append(family)
             for child in children:
                 assert child.child_family is None
                 child.child_family = family
 
-    return list(indi_to_person.values()), families
+    return id_to_person, id_to_family
 
 
 def get_parent_family(person: Person) -> Optional[Family]:
@@ -355,41 +359,129 @@ def sandclock(
     ])
 
 
-if __name__ == '__main__':
+def _validate_limit(ctx, param, value):
+    if value < -1:
+        raise click.BadParameter('must be >= -1')
+    return value
+
+
+@click.command()
+@click.option(
+    '--siblings/--no-siblings',
+    default=True,
+    help='Whether to show the siblings of the target person',
+    show_default=True,
+)
+@click.option(
+    '--ancestor-siblings/--no-ancestor-siblings',
+    default=True,
+    help='Whether to show the siblings of the target person\'s ancestors',
+    show_default=True,
+)
+@click.option(
+    '--max-ancestor-generations',
+    default=-1,
+    type=int,
+    metavar='LIMIT',
+    callback=_validate_limit,
+    help=(
+        'Maximum number of ancestor generations to show. Set to -1 for no '
+        'limit.'
+    ),
+    show_default=True,
+)
+@click.option(
+    '--max-descendant-generations',
+    default=-1,
+    type=int,
+    metavar='LIMIT',
+    callback=_validate_limit,
+    help=(
+        'Maximum number of descendant generations to show. Set to -1 for no '
+        'limit.'
+    ),
+    show_default=True,
+)
+@click.option(
+    '--dynamic-generation-limits/--static-generation-limits',
+    default=False,
+    help=(
+        'Whether to adjust the generation limits dynamically when the target '
+        'person has less ancestor/descendant generations than the limit. For '
+        'example, if --max-ancestor-generations and '
+        '--max-descendant-generations are both set to 3 and the target person '
+        'has only 1 descendant generation, then --max-ancestor-generations is '
+        'increased by 2 if --dynamic-generation-limits is given.'
+    ),
+    show_default=True,
+)
+@click.option('-v', '--verbose', count=True, help='Increase verbosity')
+@click.argument('gedcom_file', type=click.File('rb'))
+@click.argument('xref_id', type=str)
+@click.argument(
+    'output_file',
+    type=click.File('w', encoding='utf-8'),
+    default='-',
+)
+def main(
+    siblings: bool,
+    ancestor_siblings: bool,
+    max_ancestor_generations: int,
+    max_descendant_generations: int,
+    dynamic_generation_limits: bool,
+    verbose: int,
+    gedcom_file: BinaryIO,
+    xref_id: str,
+    output_file: TextIO,
+):
+    """
+    Create databases for genealogytree from GEDCOM files.
+
+    The LaTeX genealogytree package (GTR) provides tools for including
+    genealogy trees in LaTeX documents. One way of doing that is by
+    storing the genealogical information in a GTR-specific database
+    file. This tool allows you to create such databases from GEDCOM
+    files (GEDCOM is a popular file format for storing genealogical
+    information).
+
+    The input file (GEDCOM_FILE, use "-" for STDIN) is read, and a GTR
+    database is written to OUTPUT_FILE (usually has a ".graph"
+    extension, defaults to STDOUT). The GTR database contains a
+    "sandclock" node for the person with the given GEDCOM XREF-ID.
+
+    The database file can then be used in LaTeX as follows:
+
+    \b
+        \\documentclass{article}
+        \\usepackage[utf8]{inputenc}
+        \\usepackage[all]{genealogytree}
+        \\begin{document}
+            \\begin{genealogypicture}[template=database pole]
+                input{my-database.graph}  % Change filename accordingly
+            \\end{genealogypicture}
+        \\end{document}
+    """
     log.addHandler(logging.StreamHandler())
-    log.setLevel(logging.DEBUG)
+    if verbose > 1:
+        log.setLevel(logging.DEBUG)
+    elif verbose > 0:
+        log.setLevel(logging.INFO)
 
-    import sys
-    persons, families = load_gedcom(sys.argv[1])
-    person = persons[5]
+    def error(s: str):
+        if verbose > 1:
+            logging.exception(s)
+            sys.exit(1)
+        sys.exit(s)
 
-    # Whether to include the siblings of the person and their ancestors
-    include_siblings = True
+    try:
+        persons, families = load_gedcom(gedcom_file)
+    except Exception as e:
+        error(f'Could not load GEDCOM data: {e}')
 
-    # How many ancestor generations to include
-    #
-    # ``-1`` includes all known ancestor generations, and ``0`` includes
-    # no ancestor generations at all.
-    max_ancestor_generations = 2
-
-    # How many descendant generations to include
-    #
-    # ``-1`` includes all known descendant generations, and ``0``
-    # includes no descendant generations at all.
-    max_descendant_generations = 2
-
-    # Whether to dynamically adjust generation limits
-    #
-    # If this setting is true, then the limits for the number of shown
-    # ancestor and descendant generations are adjusted dynamically if
-    # one of them is not reached. For example, if
-    # ``max_descendant_generations`` is set to 3 but the target person
-    # only has 1 descendant generation then ``max_ancestor_generations``
-    # is increased by 2, showing more ancestor generations instead. This
-    # is useful for persons at the former and latter ends of the tree if
-    # your goal is to produce graphs with a maximum number of total
-    # generations.
-    dynamic_generation_limits = False
+    try:
+        person = persons[xref_id.replace('@', '')]
+    except KeyError:
+        error(f'No person with XREF-ID "{xref_id}"')
 
     if dynamic_generation_limits:
         num_ancestor_generations = person.count_ancestor_generations()
@@ -407,21 +499,27 @@ if __name__ == '__main__':
             remaining = max_descendant_generations - num_descendant_generations
             if remaining:
                 log.debug(
-                    f'Dynamically increasing max_ancestor_gerations by {remaining}'
+                    f'Dynamically increasing max_ancestor_gerations by '
+                    f'{remaining}'
                 )
                 max_ancestor_generations += remaining
         else:  # num_descendant_generations > max_descendant_generations
             remaining = max_ancestor_generations - num_ancestor_generations
             if remaining:
                 log.debug(
-                    f'Dynamically increasing max_descendant_gerations by {remaining}'
+                    f'Dynamically increasing max_descendant_gerations by '
+                    f'{remaining}'
                 )
                 max_descendant_generations += remaining
 
-    print(sandclock(
+    output_file.write(sandclock(
         person,
-        include_siblings,
-        include_ancestor_siblings,
+        siblings,
+        ancestor_siblings,
         max_ancestor_generations,
         max_descendant_generations,
     ))
+
+
+if __name__ == '__main__':
+    main()

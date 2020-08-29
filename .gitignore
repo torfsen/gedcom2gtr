@@ -1,7 +1,8 @@
 /venv/
-/example.pdf
-/example.graph
 
 .*.sw?
 *.aux
 *.log
+*.tex
+*.graph
+*.pdf
