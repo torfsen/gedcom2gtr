@@ -7,7 +7,6 @@
 ansel==0.1.1              # via ged4py
 click==7.1.2              # via -r requirements.in
 convertdate==2.2.1        # via ged4py
-dataclasses==0.7          # via -r requirements.in
 ged4py==0.2.2             # via -r requirements.in
 pymeeus==0.3.7            # via convertdate
 pytz==2020.1              # via convertdate
