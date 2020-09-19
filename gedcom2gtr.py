@@ -161,6 +161,10 @@ class Person:
         if sex:
             gtr_fields['sex'] = '{female}' if sex == 'F' else '{male}'
 
+        occupation = record.sub_tag_value('OCCU')
+        if occupation:
+            gtr_fields['profession'] = f'{{{occupation}}}'
+
         return cls(
             record.xref_id.replace('@', ''),
             gtr_fields,
