@@ -1,4 +1,8 @@
 /venv/
+/dist/
+
+__pycache__/
+*.egg-info/
 
 .*.sw?
 *.aux
