@@ -75,6 +75,12 @@ Options:
 
 ## Development
 
+First clone the repository, then install the development dependencies:
+
+```shell
+pip install -r dev-requirements.txt
+```
+
 You can run the [pre-commit] checks via
 
 ```shell
@@ -82,6 +88,8 @@ make pre-commit
 ```
 
 Package versions are managed via [versioneer].
+
+Runtime and development dependencies are managed via [pip-tools].
 
 
 ## License
@@ -92,5 +100,6 @@ Copyright (c) 2020, [Florian Brucker](www.florianbrucker.de). Released under the
 [GEDCOM]: https://en.wikipedia.org/wiki/GEDCOM
 [genealogytree]: https://www.ctan.org/pkg/genealogytree
 [pip]: https://pip.pypa.io/en/stable/
+[pip-tools]: https://github.com/jazzband/pip-tools
 [pre-commit]: https://pre-commit.com/
 [versioneer]: https://github.com/python-versioneer/python-versioneer
