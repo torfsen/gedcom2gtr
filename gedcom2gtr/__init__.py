@@ -261,6 +261,7 @@ def load_gedcom(
             children = [
                 id_to_person[indi.xref_id.replace('@', '')]
                 for indi in fam.sub_tags('CHIL')
+                if indi is not None
             ]
             marriage = Event.from_record(fam.sub_tag('MARR'))
             family = Family(
