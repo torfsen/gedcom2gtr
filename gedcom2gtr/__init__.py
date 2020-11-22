@@ -31,8 +31,6 @@ popular file format for storing genealogical information).
 """
 
 from dataclasses import dataclass
-import datetime as dt
-from enum import Enum
 import logging
 from pathlib import Path
 import sys
@@ -41,7 +39,7 @@ from typing import BinaryIO, Dict, List, Optional, TextIO, Tuple, Union
 import click
 from ged4py.calendar import CalendarDate
 from ged4py.date import DateValue, DateValueVisitor
-from ged4py.model import Individual, Record
+from ged4py.model import Record
 from ged4py.parser import GedcomReader
 
 
@@ -75,7 +73,9 @@ class GtrDateFormatter(DateValueVisitor):
         return self._format_date(date.date)
 
     def visitPeriod(self, date: DateValue) -> str:
-        return f'{self._format_date(date.date1)}/{self._format_date(date.date2)}'
+        return (
+            f'{self._format_date(date.date1)}/{self._format_date(date.date2)}'
+        )
 
     visitRange = visitPeriod
 
@@ -161,7 +161,9 @@ class Person:
         for key in ['maiden', 'birth', None, 'married']:
             name = names.get(key)
             if name:
-                gtr_fields['name'] = rf'{{\pref{{{name[0] or "?"}}} \surn{{{name[1] or "?"}}}}}'
+                gtr_fields['name'] = (
+                    rf'{{\pref{{{name[0] or "?"}}} \surn{{{name[1] or "?"}}}}}'
+                )
                 break
 
         for key, tag in [
@@ -233,7 +235,9 @@ class Family:
         option_parts = [f'id={self.id}']
         if self.marriage:
             modifier, value = self.marriage.to_gtr()
-            option_parts.append(f'family database={{marriage{modifier}={value}}}')
+            option_parts.append(
+                f'family database={{marriage{modifier}={value}}}'
+            )
         return ','.join(option_parts)
 
 
@@ -284,7 +288,7 @@ def get_parent_family(person: Person) -> Optional[Family]:
     if person.parent_families:
         if len(person.parent_families) > 1:
             # TODO: Support for multiple parent families
-            print(f'WARNING: Multiple parent families')
+            print('WARNING: Multiple parent families')
         return person.parent_families[0]
 
 
@@ -512,7 +516,7 @@ def main(
 
         if (
             (num_ancestor_generations > max_ancestor_generations)
-            ==  (num_descendant_generations > max_descendant_generations)
+            == (num_descendant_generations > max_descendant_generations)
         ):
             # Limit is broken in neither direction or in both directions
             pass

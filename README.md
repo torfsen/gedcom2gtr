@@ -12,7 +12,7 @@
 
 ## Usage
 
-```
+```none
 $ gedcom2gtr --help
 Usage: gedcom2gtr [OPTIONS] GEDCOM_FILE XREF_ID [OUTPUT_FILE]
 
@@ -73,6 +73,15 @@ Options:
 ```
 
 
+## Development
+
+You can run the [pre-commit] checks via
+
+```shell
+make pre-commit
+```
+
+
 ## License
 
 Copyright (c) 2020, [Florian Brucker](www.florianbrucker.de). Released under the MIT license. See the file `LICENSE` for details.
@@ -81,3 +90,4 @@ Copyright (c) 2020, [Florian Brucker](www.florianbrucker.de). Released under the
 [GEDCOM]: https://en.wikipedia.org/wiki/GEDCOM
 [genealogytree]: https://www.ctan.org/pkg/genealogytree
 [pip]: https://pip.pypa.io/en/stable/
+[pre-commit]: https://pre-commit.com/

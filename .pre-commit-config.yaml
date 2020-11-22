@@ -1,0 +1,13 @@
+repos:
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: 'v3.3.0'
+      hooks:
+          - id: check-byte-order-marker
+          - id: check-json
+          - id: check-toml
+          - id: check-xml
+          - id: check-yaml
+    - repo: https://gitlab.com/pycqa/flake8
+      rev: '3.8.4'
+      hooks:
+          - id: flake8
