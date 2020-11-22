@@ -81,6 +81,8 @@ You can run the [pre-commit] checks via
 make pre-commit
 ```
 
+Package versions are managed via [versioneer].
+
 
 ## License
 
@@ -91,3 +93,4 @@ Copyright (c) 2020, [Florian Brucker](www.florianbrucker.de). Released under the
 [genealogytree]: https://www.ctan.org/pkg/genealogytree
 [pip]: https://pip.pypa.io/en/stable/
 [pre-commit]: https://pre-commit.com/
+[versioneer]: https://github.com/python-versioneer/python-versioneer

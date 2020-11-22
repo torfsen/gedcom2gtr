@@ -43,7 +43,10 @@ from ged4py.model import Record
 from ged4py.parser import GedcomReader
 
 
-__version__ = '0.0.0'
+# versioneer
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
 
 log = logging.getLogger('gedcom2gtr')
 

@@ -2,3 +2,4 @@
 pip-tools==5.3.1
 ipdb==0.13.3
 pre-commit==2.9.0
+versioneer==0.19

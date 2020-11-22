@@ -21,24 +21,20 @@
 # THE SOFTWARE.
 
 from pathlib import Path
-import re
 
+import versioneer
 from setuptools import setup
 
 
 HERE = Path(__file__).parent.resolve()
 SOURCE_FILE = HERE / 'gedcom2gtr' / '__init__.py'
 
-version = None
 in_doc_str = False
 doc_lines = []
 with SOURCE_FILE.open(encoding='utf8') as f:
     for line in f:
         s = line.strip()
-        m = re.match(r"""__version__\s*=\s*['"](.*)['"]""", line)
-        if m:
-            version = m.groups()[0]
-        elif s in ['"""', "'''"]:
+        if s in ['"""', "'''"]:
             if in_doc_str:
                 in_doc_str = False
             elif not doc_lines:
@@ -46,8 +42,6 @@ with SOURCE_FILE.open(encoding='utf8') as f:
         elif in_doc_str:
             doc_lines.append(line)
 
-if not version:
-    raise RuntimeError(f'Could not extract version from "{SOURCE_FILE}"')
 if not doc_lines:
     raise RuntimeError(f'Could not extract doc string from "{SOURCE_FILE}"')
 
@@ -59,7 +53,8 @@ setup(
     name='gedcom2gtr',
     description='Convert GEDCOM files to genealogytree databases',
     long_description='\n'.join(doc_lines),
-    version=version,
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     license='MIT',
     keywords='gedcom latex genealogytree genealogy'.split(),
     classifiers=[
