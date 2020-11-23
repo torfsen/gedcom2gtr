@@ -72,6 +72,10 @@ Options:
   --help                          Show this message and exit.
 ```
 
+## History
+
+See the file `CHANGELOG.md`.
+
 
 ## Development
 
