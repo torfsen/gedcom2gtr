@@ -75,7 +75,7 @@ Options:
 
 ## Development
 
-First clone the repository, then install the development dependencies:
+First clone the repository, then install the development dependencies (runtime and development dependencies are managed via [pip-tools]):
 
 ```shell
 pip install -r dev-requirements.txt
@@ -87,9 +87,15 @@ You can run the [pre-commit] checks via
 make pre-commit
 ```
 
-Package versions are managed via [versioneer].
+and tests via
 
-Runtime and development dependencies are managed via [pip-tools].
+```shell
+make tests
+```
+
+A test coverage report is automatically stored in `htmlcov`.
+
+Package versions are managed via [versioneer].
 
 
 ## License

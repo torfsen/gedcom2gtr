@@ -1,5 +1,7 @@
 /venv/
 /dist/
+/htmlcov/
+/.coverage
 
 __pycache__/
 *.egg-info/
