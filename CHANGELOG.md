@@ -3,7 +3,7 @@
 The format of this file is based on [Keep a Changelog] and this project adheres to [Semantic Versioning].
 
 
-## [Unreleased]
+## [0.1.0] (2020-11-27)
 
 - First public release
 
@@ -12,3 +12,4 @@ The format of this file is based on [Keep a Changelog] and this project adheres 
 [Semantic Versioning]: http://semver.org/
 
 [Unreleased]: https://github.com/torfsen/gedcom2gtr/commits/master
+[0.1.0]: https://github.com/torfsen/gedcom2gtr/commits/v0.1.0
