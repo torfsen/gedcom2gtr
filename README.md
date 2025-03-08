@@ -104,7 +104,7 @@ Package versions are managed via [versioneer].
 
 ## License
 
-Copyright (c) 2020, [Florian Brucker](www.florianbrucker.de). Released under the MIT license. See the file `LICENSE` for details.
+Copyright (c) 2020-2025, [Florian Brucker](http://www.florianbrucker.de). Released under the MIT license. See the file `LICENSE` for details.
 
 
 [GEDCOM]: https://en.wikipedia.org/wiki/GEDCOM
