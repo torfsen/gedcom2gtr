@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools >= 64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+dynamic = ["dependencies", "readme", "version"]
+name = "gedcom2gtr"
+description = "Convert GEDCOM files to genealogytree databases"
+keywords = [
+    "gedcom",
+    "latex",
+    "genealogytree",
+    "genealogy",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Sociology :: Genealogy",
+    "Topic :: Text Processing :: Markup :: LaTeX",
+]
+authors = [
+    { name = "Florian Brucker", email = "florian.brucker@posteo.de" },
+]
+license = { file = "LICENSE" }
+requires-python = ">= 3.8"
+
+
+[project.urls]
+repository = "https://github.com/torfsen/gedcom2gtr"
+
+
+[project.scripts]
+gedcom2gtr = "gedcom2gtr:main"
+
+
+[tool.pytest.ini_options]
+addopts = """
+    --cov=gedcom2gtr
+    --cov-report html
+    --cov-report term
+"""
+
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+readme = {file = ["README.md"]}
+
+
+[tool.setuptools_scm]

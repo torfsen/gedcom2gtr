@@ -30,6 +30,16 @@ allows you to create such databases from GEDCOM files (GEDCOM is a
 popular file format for storing genealogical information).
 """
 
+
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("gedcom2gtr")
+except PackageNotFoundError:
+    # Package is not installed
+    __version__ = "0.0.0"
+
+
 from dataclasses import dataclass
 import logging
 from pathlib import Path
@@ -42,13 +52,7 @@ from ged4py.date import DateValue, DateValueVisitor
 from ged4py.model import Record
 from ged4py.parser import GedcomReader
 
-
-# versioneer
-from ._version import get_versions
-__version__ = get_versions()['version']
-del get_versions
-
-log = logging.getLogger('gedcom2gtr')
+log = logging.getLogger(__name__)
 
 
 #: Maps GEDCOM month names to their number
