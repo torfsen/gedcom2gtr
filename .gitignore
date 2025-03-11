@@ -2,13 +2,14 @@
 /dist/
 /htmlcov/
 /.coverage
+/.python-version
 
 __pycache__/
 *.egg-info/
 
 .*.sw?
-*.aux
-*.log
-*.tex
-*.graph
-*.pdf
+/*.aux
+/*.log
+/*.tex
+/*.graph
+/*.pdf

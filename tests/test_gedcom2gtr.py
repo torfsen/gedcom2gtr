@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2020 Florian Brucker (www.florianbrucker.de)
+# Copyright (c) 2020-2025 Florian Brucker (www.florianbrucker.de)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -30,93 +30,103 @@ import subprocess
 
 HERE = Path(__file__).resolve().parent
 
-TEST_GED = HERE / 'test.ged'
+
+def run(fn, args, xref_id):
+    args = ['gedcom2gtr'] + args + [str(fn), str(xref_id)]
+    p = subprocess.run(args, capture_output=True, encoding='utf-8')
+    if p.returncode != 0:
+        parts = [f"Execution of {args} failed with return code {p.returncode}"]
+        if p.stdout.strip():
+            parts.append(f"STDOUT:\n{p.stdout}")
+        if p.stderr.strip():
+            parts.append(f"STDERR:\n{p.stderr}")
+        raise AssertionError("\n\n".join(parts))
+    return p.stdout.strip()
 
 
-def run(args, xref_id):
-    args = ['gedcom2gtr'] + args + [str(TEST_GED), str(xref_id)]
-    p = subprocess.run(args, capture_output=True, check=True, encoding='utf-8')
-    return p.stdout
-
-
-def check(args, xref_id, expected_output):
-    assert run(args, xref_id) == expected_output
-
-
-DEFAULT_OUTPUT = r'sandclock[id=F0002]{child[id=F0003]{g[id=I0006]{name={\pref{D} \surn{1}},sex={male},}child[id=F0004]{g[id=I0008]{name={\pref{E} \surn{1}},sex={male},}p[id=I0009]{name={\pref{F} \surn{1}},sex={female},}c[id=I0010]{name={\pref{G} \surn{1}},}}}parent[id=F0001]{g[id=I0004]{name={\pref{B} \surn{2}},sex={male},}p[id=I0001]{name={\pref{A} \surn{1}},birth={(AD)1900-01-01}{Somewhere},sex={male},}p[id=I0002]{name={\pref{A} \surn{2}},birth-={(AD)1895-12-31},sex={female},}c[id=I0003]{name={\pref{B} \surn{1}},}}p[id=I0005]{name={\pref{C} \surn{1}},sex={female},}c[id=I0007]{name={\pref{D} \surn{2}},}}'  # noqa: E501
+def check(ged_fn, args, xref_id, output_fn):
+    expected_output = (HERE / output_fn).read_text().strip()
+    assert run(HERE / ged_fn, args, xref_id) == expected_output
 
 
 def test_defaults():
-    check([], 'I0006', DEFAULT_OUTPUT)
+    check("basics.ged", [], 'I0006', "default.graph")
 
 
 def test_no_siblings():
-    check(
-        ['--no-siblings'],
-        'I0006',
-        r'sandclock[id=F0002]{child[id=F0003]{g[id=I0006]{name={\pref{D} \surn{1}},sex={male},}child[id=F0004]{g[id=I0008]{name={\pref{E} \surn{1}},sex={male},}p[id=I0009]{name={\pref{F} \surn{1}},sex={female},}c[id=I0010]{name={\pref{G} \surn{1}},}}}parent[id=F0001]{g[id=I0004]{name={\pref{B} \surn{2}},sex={male},}p[id=I0001]{name={\pref{A} \surn{1}},birth={(AD)1900-01-01}{Somewhere},sex={male},}p[id=I0002]{name={\pref{A} \surn{2}},birth-={(AD)1895-12-31},sex={female},}c[id=I0003]{name={\pref{B} \surn{1}},}}p[id=I0005]{name={\pref{C} \surn{1}},sex={female},}}',  # noqa: E501
-    )
+    check("basics.ged", ['--no-siblings'], 'I0006', "no_siblings.graph")
 
 
 def test_no_ancestor_siblings():
     check(
+        "basics.ged",
         ['--no-ancestor-siblings'],
         'I0006',
-        r'sandclock[id=F0002]{child[id=F0003]{g[id=I0006]{name={\pref{D} \surn{1}},sex={male},}child[id=F0004]{g[id=I0008]{name={\pref{E} \surn{1}},sex={male},}p[id=I0009]{name={\pref{F} \surn{1}},sex={female},}c[id=I0010]{name={\pref{G} \surn{1}},}}}parent[id=F0001]{g[id=I0004]{name={\pref{B} \surn{2}},sex={male},}p[id=I0001]{name={\pref{A} \surn{1}},birth={(AD)1900-01-01}{Somewhere},sex={male},}p[id=I0002]{name={\pref{A} \surn{2}},birth-={(AD)1895-12-31},sex={female},}}p[id=I0005]{name={\pref{C} \surn{1}},sex={female},}c[id=I0007]{name={\pref{D} \surn{2}},}}',  # noqa: E501
+        "no_ancestor_siblings.graph",
     )
 
 
 def test_max_ancestor_generations():
     check(
+        "basics.ged",
         ['--max-ancestor-generations', '1'],
         'I0006',
-        r'sandclock[id=F0002]{child[id=F0003]{g[id=I0006]{name={\pref{D} \surn{1}},sex={male},}child[id=F0004]{g[id=I0008]{name={\pref{E} \surn{1}},sex={male},}p[id=I0009]{name={\pref{F} \surn{1}},sex={female},}c[id=I0010]{name={\pref{G} \surn{1}},}}}parent[id=F0001]{g[id=I0004]{name={\pref{B} \surn{2}},sex={male},}}p[id=I0005]{name={\pref{C} \surn{1}},sex={female},}c[id=I0007]{name={\pref{D} \surn{2}},}}',  # noqa: E501
+        "max_ancestor_generations.graph",
     )
 
 
 def test_no_ancestor_generations():
     check(
+        "basics.ged",
         ['--max-ancestor-generations', '0'],
         'I0006',
-        r'sandclock[id=F0002]{child[id=F0003]{g[id=I0006]{name={\pref{D} \surn{1}},sex={male},}child[id=F0004]{g[id=I0008]{name={\pref{E} \surn{1}},sex={male},}p[id=I0009]{name={\pref{F} \surn{1}},sex={female},}c[id=I0010]{name={\pref{G} \surn{1}},}}}}',  # noqa: E501
+        "no_ancestor_generations.graph",
     )
 
 
 def test_max_descendant_generations():
     check(
+        "basics.ged",
         ['--max-descendant-generations', '1'],
         'I0006',
-        r'sandclock[id=F0002]{child[id=F0003]{g[id=I0006]{name={\pref{D} \surn{1}},sex={male},}c[id=I0008]{name={\pref{E} \surn{1}},sex={male},}}parent[id=F0001]{g[id=I0004]{name={\pref{B} \surn{2}},sex={male},}p[id=I0001]{name={\pref{A} \surn{1}},birth={(AD)1900-01-01}{Somewhere},sex={male},}p[id=I0002]{name={\pref{A} \surn{2}},birth-={(AD)1895-12-31},sex={female},}c[id=I0003]{name={\pref{B} \surn{1}},}}p[id=I0005]{name={\pref{C} \surn{1}},sex={female},}c[id=I0007]{name={\pref{D} \surn{2}},}}',  # noqa: E501
+        'max_descendant_generations.graph',
     )
 
 
 def test_no_descendant_generations():
     check(
+        "basics.ged",
         ['--max-descendant-generations', '0'],
         'I0006',
-        r'sandclock[id=F0002]{c[id=I0006]{name={\pref{D} \surn{1}},sex={male},}parent[id=F0001]{g[id=I0004]{name={\pref{B} \surn{2}},sex={male},}p[id=I0001]{name={\pref{A} \surn{1}},birth={(AD)1900-01-01}{Somewhere},sex={male},}p[id=I0002]{name={\pref{A} \surn{2}},birth-={(AD)1895-12-31},sex={female},}c[id=I0003]{name={\pref{B} \surn{1}},}}p[id=I0005]{name={\pref{C} \surn{1}},sex={female},}c[id=I0007]{name={\pref{D} \surn{2}},}}',  # noqa: E501
+        'no_descendant_generations.graph',
     )
 
 
 def test_dynamic_generation_limits_with_fewer_ancestors():
     check(
+        "basics.ged",
         [
             '--max-ancestor-generations', '3',
             '--max-descendant-generations', '1',
             '--dynamic-generation-limits',
         ],
         'I0006',
-        DEFAULT_OUTPUT,
+        "default.graph",
     )
 
 
 def test_dynamic_generation_limits_with_fewer_descendants():
     check(
+        "basics.ged",
         [
             '--max-ancestor-generations', '1',
             '--max-descendant-generations', '3',
             '--dynamic-generation-limits',
         ],
         'I0006',
-        DEFAULT_OUTPUT,
+        "default.graph",
     )
+
+
+def test_multiple_families():
+    check('multiple_families.ged', [], 'I0002', "multiple_families.graph")
