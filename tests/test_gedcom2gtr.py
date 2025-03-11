@@ -24,8 +24,12 @@
 Tests for ``gedcom2gtr``.
 """
 
+from contextlib import redirect_stdout
+import io
 from pathlib import Path
-import subprocess
+from unittest.mock import patch
+
+from gedcom2gtr import main
 
 
 HERE = Path(__file__).resolve().parent
@@ -33,15 +37,13 @@ HERE = Path(__file__).resolve().parent
 
 def run(fn, args, xref_id):
     args = ['gedcom2gtr'] + args + [str(fn), str(xref_id)]
-    p = subprocess.run(args, capture_output=True, encoding='utf-8')
-    if p.returncode != 0:
-        parts = [f"Execution of {args} failed with return code {p.returncode}"]
-        if p.stdout.strip():
-            parts.append(f"STDOUT:\n{p.stdout}")
-        if p.stderr.strip():
-            parts.append(f"STDERR:\n{p.stderr}")
-        raise AssertionError("\n\n".join(parts))
-    return p.stdout.strip()
+    with patch("sys.argv", args):
+        with redirect_stdout(io.StringIO()) as stdout:
+            try:
+                main()
+            except SystemExit as e:
+                assert e.code == 0
+    return stdout.getvalue()
 
 
 def check(ged_fn, args, xref_id, output_fn):
