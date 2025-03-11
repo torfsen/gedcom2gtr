@@ -79,7 +79,7 @@ See the file `CHANGELOG.md`.
 
 ## Development
 
-First clone the repository, then install the development dependencies (runtime and development dependencies are managed via [pip-tools]):
+First clone the repository, then install the development dependencies:
 
 ```shell
 pip install -r dev-requirements.txt
@@ -100,6 +100,14 @@ make tests
 A test coverage report is automatically stored in `htmlcov`.
 
 Package versions are managed via [versioneer].
+
+The dependencies are managed via [pip-tools]. Run
+
+```shell
+make pip-compile
+```
+
+to update the `*requirements.txt` files from their `*requirements.in` counterparts.
 
 
 ## License
