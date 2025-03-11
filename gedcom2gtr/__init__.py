@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2020-2025 Florian Brucker (http://www.florianbrucker.de)
+# Copyright (c) 2020-2025 Florian Brucker (www.florianbrucker.de)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -147,7 +147,11 @@ class Event:
 class Person:
     id: str
     gtr_fields: Dict[str, str]
+
+    #: Families in which this person is a parent/spouse
     parent_families: List['Family']
+
+    #: Families in which this person is a child
     child_family: Optional['Family']
 
     @classmethod
@@ -287,28 +291,47 @@ def load_gedcom(
     return id_to_person, id_to_family
 
 
-def get_parent_family(person: Person) -> Optional[Family]:
-    if person.parent_families:
-        if len(person.parent_families) > 1:
-            # TODO: Support for multiple parent families
-            print('WARNING: Multiple parent families')
-        return person.parent_families[0]
-
-
 def _child_node(person: Person, max_generations: int = -1) -> str:
-    parent_family = get_parent_family(person)
-    if not parent_family or max_generations == 0:
+    """
+    Create a GTR child node.
+
+    If ``max_generations`` is ``0`` or if the person has no spouse and
+    no children then a simple ``c`` node is returned.
+
+    Otherwise, a ``child`` node is returned which contains the person
+    itself (as a ``g`` node) as well as their spouse (as a ``p`` node)
+    and their children (recursively, as ``c`` or ``child`` nodes).
+
+    Args:
+        person: target person
+        max_generations: generation counter
+
+    Returns:
+        GTR code.
+    """
+    if not person.parent_families or max_generations == 0:
         # No known spouse/children or recursion limit reached
         return person.to_gtr('c', True)
     parts = [
-        f'child[{parent_family.make_gtr_options()}]{{',
+        # We use the options from the first family here, the options for any
+        # additional families go into their `union` nodes.
+        f'child[{person.parent_families[0].make_gtr_options()}]{{',
         person.to_gtr('g', True),
     ]
-    for parent in parent_family.parents:
-        if parent != person:
-            parts.append(parent.to_gtr('p', True))
-    for child in parent_family.children:
-        parts.append(_child_node(child, max(-1, max_generations - 1)))
+    for i, parent_family in enumerate(person.parent_families):
+        # The first parent family's nodes are listed directly inside the
+        # `child` node, but any additional families need to nested inside
+        # `union` nodes.
+        needs_union = i > 0
+        if needs_union:
+            parts.append(f'union[{parent_family.make_gtr_options()}]{{')
+        for parent in parent_family.parents:
+            if parent != person:
+                parts.append(parent.to_gtr('p', True))
+        for child in parent_family.children:
+            parts.append(_child_node(child, max(-1, max_generations - 1)))
+        if needs_union:
+            parts.append("}")  # Close the `union`
     parts.append('}')
     return ''.join(parts)
 
@@ -319,6 +342,26 @@ def _parent_node(
     include_ancestor_siblings: bool = True,
     max_generations: int = -1,
 ) -> str:
+    """
+    Create a GTR parent node.
+
+    If ``max_generations`` is ``0`` or if the person has no known
+    parents then a simple ``p`` node is returned.
+
+    Otherwise a ``parent`` node is returned which contains the
+    person itself (as a ``g`` node), as well as the rest of their
+    parent family (and, recursively, their ancestors).
+
+    Args:
+        person: target person
+        include_siblings: whether to include the siblings of ``person``
+        include_ancestor_siblings: whether to include the siblings of
+            the ancestors of ``person``
+        max_generations: generation counter
+
+    Returns:
+        GTR code.
+    """
     child_family = person.child_family
     if not child_family or max_generations == 0:
         # Parents unknown or recursion limit reached
@@ -343,22 +386,46 @@ def _parent_node_body(
     include_ancestor_siblings: bool,
     max_generations: int,
 ) -> str:
+    """
+    Create the body for a GTR ``parent`` node.
+
+    If ``max_generations`` is ``0`` or if the person has no known
+    parents then an empty string is returned.
+
+    Otherwise, a sequence of nodes is returned, starting with a node for
+    each of the person's parents (either a ``p`` or a ``parent`` node),
+    followed by a ``c`` node for each of the person's siblings if
+    ``include_siblings`` is true.
+
+    Note that no node is included for the person itself.
+
+    Args:
+        person: target person
+        include_siblings: whether to include the siblings of ``person``
+        include_ancestor_siblings: whether to include the siblings of
+            the ancestors of ``person``
+        max_generations: generation counter
+
+    Returns:
+        GTR code.
+    """
+    if not person.child_family or max_generations == 0:
+        return ''
+
     parts = []
-    if person.child_family and max_generations != 0:
-        for parent in person.child_family.parents:
-            parts.append(_parent_node(
-                parent,
-                include_ancestor_siblings,  # After the first level
-                                            # there is no difference
-                                            # between siblings and
-                                            # ancestor siblings
-                include_ancestor_siblings,
-                max_generations,
-            ))
-        if include_siblings:
-            for child in person.child_family.children:
-                if child != person:
-                    parts.append(child.to_gtr('c', True))
+    for parent in person.child_family.parents:
+        parts.append(_parent_node(
+            parent,
+            # After the first level there is no difference between siblings and
+            # ancestor siblings
+            include_ancestor_siblings,
+            include_ancestor_siblings,
+            max_generations,
+        ))
+    if include_siblings:
+        for child in person.child_family.children:
+            if child != person:
+                parts.append(child.to_gtr('c', True))
     return ''.join(parts)
 
 
