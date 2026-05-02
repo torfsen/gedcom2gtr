@@ -50,6 +50,10 @@ addopts = """
 """
 
 
+[tool.setuptools]
+packages = ["gedcom2gtr"]
+
+
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
 readme = {file = ["README.md"]}
