@@ -112,7 +112,7 @@ to update the `*requirements.txt` files from their `*requirements.in` counterpar
 
 ## License
 
-Copyright (c) 2020-2025, [Florian Brucker](http://www.florianbrucker.de). Released under the MIT license. See the file `LICENSE` for details.
+Copyright (c) 2020-2026, [Florian Brucker](http://www.florianbrucker.de). Released under the MIT license. See the file `LICENSE` for details.
 
 
 [GEDCOM]: https://en.wikipedia.org/wiki/GEDCOM
