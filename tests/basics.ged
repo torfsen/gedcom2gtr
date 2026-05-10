@@ -9,27 +9,32 @@
 0 NOTE ========================================================================
 0 NOTE This file is for testing the basic functionality of the program.
 0 NOTE
-0 NOTE A1   F1  A2
-0 NOTE   \--+--/
-0 NOTE      |
-0 NOTE  +---+
-0 NOTE  |   |
-0 NOTE  B1  B2   F2  C1
-0 NOTE        \--+--/
-0 NOTE           |
-0 NOTE           +---+
-0 NOTE           |   |
-0 NOTE       F3  D1  D2
-0 NOTE       +--/
-0 NOTE       |
-0 NOTE       +
-0 NOTE       |
-0 NOTE       E1   F4  F1
-0 NOTE         \--+--/
+0 NOTE A1                A2
+0 NOTE I0001    F0001    I0002
+0 NOTE      \-----+-----/
 0 NOTE            |
-0 NOTE            +
-0 NOTE            |
-0 NOTE            G1
+0 NOTE     +------+
+0 NOTE     |      |
+0 NOTE     B1     B2                C1
+0 NOTE     I0003  I0004    F0002    I0005
+0 NOTE                 \-----+-----/
+0 NOTE                       |
+0 NOTE                       +------+
+0 NOTE                       |      |
+0 NOTE                       D1     D2
+0 NOTE              F0003    I0006  I0007
+0 NOTE                +-----/
+0 NOTE                |
+0 NOTE                +
+0 NOTE                |
+0 NOTE                E1                F1
+0 NOTE                I0008    F0004    I0009
+0 NOTE                     \-----+-----/
+0 NOTE                           |
+0 NOTE                           +
+0 NOTE                           |
+0 NOTE                           G1
+0 NOTE                           I0010
 0 NOTE
 0 NOTE ========================================================================
 0 NOTE

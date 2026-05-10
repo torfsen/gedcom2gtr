@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2020-2025 Florian Brucker (www.florianbrucker.de)
+# Copyright (c) 2020-2026 Florian Brucker (www.florianbrucker.de)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -209,8 +209,10 @@ class Person:
         if include_id:
             parts.append(f'[id={self.id}]')
         parts.append('{')
+        field_parts = []
         for key, value in self.gtr_fields.items():
-            parts.append(f'{key}={value},')
+            field_parts.append(f'{key}={value}')
+        parts.append(",".join(field_parts))
         parts.append('}')
         return ''.join(parts)
 
@@ -295,7 +297,7 @@ def load_gedcom(
     return id_to_person, id_to_family
 
 
-def _child_node(person: Person, max_generations: int = -1) -> str:
+def _make_child_node(person: Person, max_generations: int = -1) -> str:
     """
     Create a GTR child node.
 
@@ -333,14 +335,14 @@ def _child_node(person: Person, max_generations: int = -1) -> str:
             if parent != person:
                 parts.append(parent.to_gtr('p', True))
         for child in parent_family.children:
-            parts.append(_child_node(child, max(-1, max_generations - 1)))
+            parts.append(_make_child_node(child, max(-1, max_generations - 1)))
         if needs_union:
             parts.append("}")  # Close the `union`
     parts.append('}')
     return ''.join(parts)
 
 
-def _parent_node(
+def _make_parent_node(
     person: Person,
     include_siblings: bool = True,
     include_ancestor_siblings: bool = True,
@@ -370,21 +372,25 @@ def _parent_node(
     if not child_family or max_generations == 0:
         # Parents unknown or recursion limit reached
         return person.to_gtr('p', True)
+    parent_node_body = _make_parent_node_body(
+        person,
+        include_siblings,
+        include_ancestor_siblings,
+        max(-1, max_generations - 1),
+    )
+    if not parent_node_body:
+        # No additional things to show
+        return person.to_gtr('p', True)
     parts = [
         f'parent[{child_family.make_gtr_options()}]{{',
         person.to_gtr('g', True),
-        _parent_node_body(
-            person,
-            include_siblings,
-            include_ancestor_siblings,
-            max(-1, max_generations - 1),
-        ),
+        parent_node_body,
         '}',
     ]
     return ''.join(parts)
 
 
-def _parent_node_body(
+def _make_parent_node_body(
     person: Person,
     include_siblings: bool,
     include_ancestor_siblings: bool,
@@ -418,7 +424,7 @@ def _parent_node_body(
 
     parts = []
     for parent in person.child_family.parents:
-        parts.append(_parent_node(
+        parts.append(_make_parent_node(
             parent,
             # After the first level there is no difference between siblings and
             # ancestor siblings
@@ -433,13 +439,24 @@ def _parent_node_body(
     return ''.join(parts)
 
 
-def sandclock(
+def _make_main_node(
     person: Person,
     include_siblings: bool = True,
     include_ancestor_siblings: bool = True,
     max_ancestor_generations: int = -1,
     max_descendant_generations: int = -1,
 ) -> str:
+    parent_node_body = _make_parent_node_body(
+        person,
+        include_siblings,
+        include_ancestor_siblings,
+        max_ancestor_generations,
+    )
+    child_node = _make_child_node(person, max_descendant_generations)
+    if not parent_node_body:
+        # Ancestor information not available or hidden
+        return child_node
+
     options = ''
     if person.child_family:
         options = person.child_family.make_gtr_options()
@@ -447,13 +464,8 @@ def sandclock(
         options = f'[{options}]'
     return ''.join([
         f'sandclock{options}{{',
-        _child_node(person, max_descendant_generations),
-        _parent_node_body(
-            person,
-            include_siblings,
-            include_ancestor_siblings,
-            max_ancestor_generations,
-        ),
+        child_node,
+        parent_node_body,
         '}',
     ])
 
@@ -546,7 +558,9 @@ def main(
     The input file (GEDCOM_FILE, use "-" for STDIN) is read, and a GTR
     database is written to OUTPUT_FILE (usually has a ".graph"
     extension, defaults to STDOUT). The GTR database contains a
-    "sandclock" node for the person with the given GEDCOM XREF-ID.
+    "sandclock" or "child" node for the person with the given GEDCOM
+    XREF-ID (depending on the availability of ancestor information and
+    the configuration).
 
     The database file can then be used in LaTeX as follows:
 
@@ -611,7 +625,7 @@ def main(
                 )
                 max_descendant_generations += remaining
 
-    output_file.write(sandclock(
+    output_file.write(_make_main_node(
         person,
         siblings,
         ancestor_siblings,
