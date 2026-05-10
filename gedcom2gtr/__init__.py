@@ -372,15 +372,19 @@ def _make_parent_node(
     if not child_family or max_generations == 0:
         # Parents unknown or recursion limit reached
         return person.to_gtr('p', True)
+    parent_node_body = _make_parent_node_body(
+        person,
+        include_siblings,
+        include_ancestor_siblings,
+        max(-1, max_generations - 1),
+    )
+    if not parent_node_body:
+        # No additional things to show
+        return person.to_gtr('p', True)
     parts = [
         f'parent[{child_family.make_gtr_options()}]{{',
         person.to_gtr('g', True),
-        _make_parent_node_body(
-            person,
-            include_siblings,
-            include_ancestor_siblings,
-            max(-1, max_generations - 1),
-        ),
+        parent_node_body,
         '}',
     ]
     return ''.join(parts)
