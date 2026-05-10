@@ -1,1 +1,1 @@
-sandclock[id=F0002]{child[id=F0003]{g[id=I0006]{name={\pref{D} \surn{1}},sex={male}}child[id=F0004]{g[id=I0008]{name={\pref{E} \surn{1}},sex={male}}p[id=I0009]{name={\pref{F} \surn{1}},sex={female}}c[id=I0010]{name={\pref{G} \surn{1}}}}}}
+child[id=F0003]{g[id=I0006]{name={\pref{D} \surn{1}},sex={male}}child[id=F0004]{g[id=I0008]{name={\pref{E} \surn{1}},sex={male}}p[id=I0009]{name={\pref{F} \surn{1}},sex={female}}c[id=I0010]{name={\pref{G} \surn{1}}}}}

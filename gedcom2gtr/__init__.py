@@ -439,13 +439,24 @@ def _make_parent_node_body(
     return ''.join(parts)
 
 
-def _make_sandclock_node(
+def _make_main_node(
     person: Person,
     include_siblings: bool = True,
     include_ancestor_siblings: bool = True,
     max_ancestor_generations: int = -1,
     max_descendant_generations: int = -1,
 ) -> str:
+    parent_node_body = _make_parent_node_body(
+        person,
+        include_siblings,
+        include_ancestor_siblings,
+        max_ancestor_generations,
+    )
+    child_node = _make_child_node(person, max_descendant_generations)
+    if not parent_node_body:
+        # Ancestor information not available or hidden
+        return child_node
+
     options = ''
     if person.child_family:
         options = person.child_family.make_gtr_options()
@@ -453,13 +464,8 @@ def _make_sandclock_node(
         options = f'[{options}]'
     return ''.join([
         f'sandclock{options}{{',
-        _make_child_node(person, max_descendant_generations),
-        _make_parent_node_body(
-            person,
-            include_siblings,
-            include_ancestor_siblings,
-            max_ancestor_generations,
-        ),
+        child_node,
+        parent_node_body,
         '}',
     ])
 
@@ -552,7 +558,9 @@ def main(
     The input file (GEDCOM_FILE, use "-" for STDIN) is read, and a GTR
     database is written to OUTPUT_FILE (usually has a ".graph"
     extension, defaults to STDOUT). The GTR database contains a
-    "sandclock" node for the person with the given GEDCOM XREF-ID.
+    "sandclock" or "child" node for the person with the given GEDCOM
+    XREF-ID (depending on the availability of ancestor information and
+    the configuration).
 
     The database file can then be used in LaTeX as follows:
 
@@ -617,7 +625,7 @@ def main(
                 )
                 max_descendant_generations += remaining
 
-    output_file.write(_make_sandclock_node(
+    output_file.write(_make_main_node(
         person,
         siblings,
         ancestor_siblings,

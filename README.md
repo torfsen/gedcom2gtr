@@ -24,10 +24,11 @@ Usage: gedcom2gtr [OPTIONS] GEDCOM_FILE XREF_ID [OUTPUT_FILE]
   allows you to create such databases from GEDCOM files (GEDCOM is a popular
   file format for storing genealogical information).
 
-  The input file (GEDCOM_FILE, use "-" for STDIN) is read, and a GTR
-  database is written to OUTPUT_FILE (usually has a ".graph" extension,
-  defaults to STDOUT). The GTR database contains a "sandclock" node for the
-  person with the given GEDCOM XREF-ID.
+  The input file (GEDCOM_FILE, use "-" for STDIN) is read, and a GTR database
+  is written to OUTPUT_FILE (usually has a ".graph" extension, defaults to
+  STDOUT). The GTR database contains a "sandclock" or "child" node for the
+  person with the given GEDCOM XREF-ID (depending on the availability of
+  ancestor information and the configuration).
 
   The database file can then be used in LaTeX as follows:
 
