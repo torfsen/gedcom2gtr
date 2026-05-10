@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2020-2025 Florian Brucker (www.florianbrucker.de)
+# Copyright (c) 2020-2026 Florian Brucker (www.florianbrucker.de)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,8 @@ import io
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from gedcom2gtr import main
 
 
@@ -36,7 +38,7 @@ HERE = Path(__file__).resolve().parent
 
 
 def run(fn, args, xref_id):
-    args = ['gedcom2gtr'] + args + [str(fn), str(xref_id)]
+    args = ['gedcom2gtr'] + [str(arg) for arg in args] + [str(fn), str(xref_id)]
     with patch("sys.argv", args):
         with redirect_stdout(io.StringIO()) as stdout:
             try:
@@ -68,39 +70,23 @@ def test_no_ancestor_siblings():
     )
 
 
-def test_max_ancestor_generations():
+@pytest.mark.parametrize("max_ancestor_generations", [0, 1, 2, 3])
+def test_max_ancestor_generations(max_ancestor_generations):
     check(
         "basics.ged",
-        ['--max-ancestor-generations', '1'],
+        ['--max-ancestor-generations', max_ancestor_generations],
         'I0006',
-        "max_ancestor_generations.graph",
+        f"max_ancestor_generations_{max_ancestor_generations}.graph",
     )
 
 
-def test_no_ancestor_generations():
+@pytest.mark.parametrize("max_descendant_generations", [0, 1, 2, 3])
+def test_max_descendant_generations(max_descendant_generations):
     check(
         "basics.ged",
-        ['--max-ancestor-generations', '0'],
+        ['--max-descendant-generations', max_descendant_generations],
         'I0006',
-        "no_ancestor_generations.graph",
-    )
-
-
-def test_max_descendant_generations():
-    check(
-        "basics.ged",
-        ['--max-descendant-generations', '1'],
-        'I0006',
-        'max_descendant_generations.graph',
-    )
-
-
-def test_no_descendant_generations():
-    check(
-        "basics.ged",
-        ['--max-descendant-generations', '0'],
-        'I0006',
-        'no_descendant_generations.graph',
+        f'max_descendant_generations_{max_descendant_generations}.graph',
     )
 
 
