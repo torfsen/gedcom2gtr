@@ -209,8 +209,10 @@ class Person:
         if include_id:
             parts.append(f'[id={self.id}]')
         parts.append('{')
+        field_parts = []
         for key, value in self.gtr_fields.items():
-            parts.append(f'{key}={value},')
+            field_parts.append(f'{key}={value}')
+        parts.append(",".join(field_parts))
         parts.append('}')
         return ''.join(parts)
 
