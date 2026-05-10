@@ -38,7 +38,9 @@ HERE = Path(__file__).resolve().parent
 
 
 def run(fn, args, xref_id):
-    args = ['gedcom2gtr'] + [str(arg) for arg in args] + [str(fn), str(xref_id)]
+    args = (
+        ['gedcom2gtr'] + [str(arg) for arg in args] + [str(fn), str(xref_id)]
+    )
     with patch("sys.argv", args):
         with redirect_stdout(io.StringIO()) as stdout:
             try:
