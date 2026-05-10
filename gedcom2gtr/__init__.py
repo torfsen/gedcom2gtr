@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2020-2025 Florian Brucker (www.florianbrucker.de)
+# Copyright (c) 2020-2026 Florian Brucker (www.florianbrucker.de)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -297,7 +297,7 @@ def load_gedcom(
     return id_to_person, id_to_family
 
 
-def _child_node(person: Person, max_generations: int = -1) -> str:
+def _make_child_node(person: Person, max_generations: int = -1) -> str:
     """
     Create a GTR child node.
 
@@ -335,14 +335,14 @@ def _child_node(person: Person, max_generations: int = -1) -> str:
             if parent != person:
                 parts.append(parent.to_gtr('p', True))
         for child in parent_family.children:
-            parts.append(_child_node(child, max(-1, max_generations - 1)))
+            parts.append(_make_child_node(child, max(-1, max_generations - 1)))
         if needs_union:
             parts.append("}")  # Close the `union`
     parts.append('}')
     return ''.join(parts)
 
 
-def _parent_node(
+def _make_parent_node(
     person: Person,
     include_siblings: bool = True,
     include_ancestor_siblings: bool = True,
@@ -375,7 +375,7 @@ def _parent_node(
     parts = [
         f'parent[{child_family.make_gtr_options()}]{{',
         person.to_gtr('g', True),
-        _parent_node_body(
+        _make_parent_node_body(
             person,
             include_siblings,
             include_ancestor_siblings,
@@ -386,7 +386,7 @@ def _parent_node(
     return ''.join(parts)
 
 
-def _parent_node_body(
+def _make_parent_node_body(
     person: Person,
     include_siblings: bool,
     include_ancestor_siblings: bool,
@@ -420,7 +420,7 @@ def _parent_node_body(
 
     parts = []
     for parent in person.child_family.parents:
-        parts.append(_parent_node(
+        parts.append(_make_parent_node(
             parent,
             # After the first level there is no difference between siblings and
             # ancestor siblings
@@ -435,7 +435,7 @@ def _parent_node_body(
     return ''.join(parts)
 
 
-def sandclock(
+def _make_sandclock_node(
     person: Person,
     include_siblings: bool = True,
     include_ancestor_siblings: bool = True,
@@ -449,8 +449,8 @@ def sandclock(
         options = f'[{options}]'
     return ''.join([
         f'sandclock{options}{{',
-        _child_node(person, max_descendant_generations),
-        _parent_node_body(
+        _make_child_node(person, max_descendant_generations),
+        _make_parent_node_body(
             person,
             include_siblings,
             include_ancestor_siblings,
@@ -613,7 +613,7 @@ def main(
                 )
                 max_descendant_generations += remaining
 
-    output_file.write(sandclock(
+    output_file.write(_make_sandclock_node(
         person,
         siblings,
         ancestor_siblings,
