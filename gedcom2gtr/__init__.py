@@ -39,10 +39,10 @@ except PackageNotFoundError:
     # Package is not installed
     __version__ = "0.0.0"
 
-
 from dataclasses import dataclass
 import logging
 from pathlib import Path
+import re
 import sys
 from typing import BinaryIO, Dict, List, Optional, TextIO, Tuple, Union
 
@@ -125,16 +125,27 @@ class GtrDateFormatter(DateValueVisitor):
 _date_formatter = GtrDateFormatter()
 
 
+def _cmd_wrap(cmd: Optional[str], arg: Optional[str]) -> str:
+    parts = []
+    if cmd:
+        parts.append(rf"\{cmd}{{")
+    if arg:
+        parts.append(arg)
+    if cmd:
+        parts.append("}")
+    return "".join(parts)
+
+
 @dataclass
 class Event:
     date: Optional[DateValue]
     place: Optional[str]
 
     @classmethod
-    def from_record(cls, record: Optional[Record]) -> 'Event':
+    def from_record(cls, event_record: Optional[Record]) -> 'Event':
         return cls(
-            record.sub_tag_value('DATE') if record else None,
-            record.sub_tag_value('PLAC') if record else None,
+            event_record.sub_tag_value('DATE') if event_record else None,
+            event_record.sub_tag_value('PLAC') if event_record else None,
         )
 
     def __bool__(self):
@@ -159,43 +170,92 @@ class Person:
     child_family: Optional['Family']
 
     @classmethod
-    def from_record(cls, record: Record) -> 'Person':
+    def _split_names(cls, names: str) -> str:
+        # Multiple names of the same type are separated by commas
+        return re.sub(r"\s*,\s*", " ", names)
+
+    @classmethod
+    def _parse_name(cls, name_record: Record) -> Optional[str]:
+        parts = []
+        if not name_record.sub_records:
+            # Flat name structure, pre-parsed by ged4py
+            for (cmd, default), name in zip(
+                (("pref", "?"), ("surn", "?"), (None, None)), name_record.value
+            ):
+                name = name or default
+                if name:
+                    parts.append(_cmd_wrap(cmd, name))
+        else:
+            # Nested name structure
+            given_name = name_record.sub_tag_value("GIVN")
+            rufname = name_record.sub_tag_value("_RUFNAME")
+            if given_name and rufname:
+                parts.append(cls._split_names(given_name))
+                parts.append(_cmd_wrap("pref", cls._split_names(rufname)))
+            elif given_name:
+                parts.append(_cmd_wrap("pref", cls._split_names(given_name)))
+            elif rufname:
+                parts.append(_cmd_wrap("pref", cls._split_names(rufname)))
+            else:
+                parts.append(_cmd_wrap("pref", "?"))
+
+            for tag, default, cmd in (
+                ("NICK", None, "nick"),
+                ("SURN", "?", "surn"),
+            ):
+                if (
+                    value := (name_record.sub_tag_value(tag) or default)
+                ) is not None:
+                    parts.append(_cmd_wrap(cmd, cls._split_names(value)))
+
+        if not parts:
+            return None
+
+        return "{" + " ".join(parts) + "}"
+
+    @classmethod
+    def _parse_names(cls, indi_record: Record) -> Optional[str]:
+        name_records = indi_record.sub_tags("NAME")
+        if not name_records:
+            return None
+        if len(name_records) > 1:
+            log.warning(
+                "Individual %s has multiple names, ignoring all but the first",
+                indi_record.xref_id,
+            )
+        if (name := cls._parse_name(name_records[0])) is not None:
+            return name
+        return None
+
+    @classmethod
+    def from_record(cls, indi_record: Record) -> 'Person':
         """
         Create a person from a ``ged4py`` individual.
         """
         gtr_fields = {}
 
-        names = {
-            name_record.type: name_record.value[:2]
-            for name_record in record.sub_tags('NAME')
-        }
-        for key in ['maiden', 'birth', None, 'married']:
-            name = names.get(key)
-            if name:
-                gtr_fields['name'] = (
-                    rf'{{\pref{{{name[0] or "?"}}} \surn{{{name[1] or "?"}}}}}'
-                )
-                break
+        if (name := cls._parse_names(indi_record)) is not None:
+            gtr_fields['name'] = name
 
         for key, tag in [
             ('birth', 'BIRT'),
             ('death', 'DEAT'),
         ]:
-            event = Event.from_record(record.sub_tag(tag))
+            event = Event.from_record(indi_record.sub_tag(tag))
             if event:
                 modifier, value = event.to_gtr()
                 gtr_fields[f'{key}{modifier}'] = value
 
-        sex = record.sub_tag_value('SEX')
+        sex = indi_record.sub_tag_value('SEX')
         if sex:
             gtr_fields['sex'] = '{female}' if sex == 'F' else '{male}'
 
-        occupation = record.sub_tag_value('OCCU')
+        occupation = indi_record.sub_tag_value('OCCU')
         if occupation:
             gtr_fields['profession'] = f'{{{occupation}}}'
 
         return cls(
-            record.xref_id.replace('@', ''),
+            indi_record.xref_id.replace('@', ''),
             gtr_fields,
             [],
             None,
@@ -264,25 +324,27 @@ def load_gedcom(
     id_to_family = {}
     with GedcomReader(f) as reader:
         # First pass, create persons
-        for indi in reader.records0('INDI'):
-            person = Person.from_record(indi)
+        for indi_record in reader.records0('INDI'):
+            person = Person.from_record(indi_record)
             id_to_person[person.id] = person
 
         # Second pass, create families
-        for fam in reader.records0('FAM'):
+        for fam_record in reader.records0('FAM'):
             parents = []
             for tag in ['HUSB', 'WIFE']:
-                indi = fam.sub_tag(tag)
-                if indi:
-                    parents.append(id_to_person[indi.xref_id.replace('@', '')])
+                indi_record = fam_record.sub_tag(tag)
+                if indi_record:
+                    parents.append(
+                        id_to_person[indi_record.xref_id.replace('@', '')]
+                    )
             children = [
-                id_to_person[indi.xref_id.replace('@', '')]
-                for indi in fam.sub_tags('CHIL')
-                if indi is not None
+                id_to_person[indi_record.xref_id.replace('@', '')]
+                for indi_record in fam_record.sub_tags('CHIL')
+                if indi_record is not None
             ]
-            marriage = Event.from_record(fam.sub_tag('MARR'))
+            marriage = Event.from_record(fam_record.sub_tag('MARR'))
             family = Family(
-                fam.xref_id.replace('@', ''),
+                fam_record.xref_id.replace('@', ''),
                 parents,
                 children,
                 marriage,

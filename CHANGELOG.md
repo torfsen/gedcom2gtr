@@ -3,6 +3,11 @@
 The format of this file is based on [Keep a Changelog] and this project adheres to [Semantic Versioning].
 
 
+## [Unreleased]
+
+- Support for nested name information, including nicknames and call names
+
+
 ## [0.3.0] (2026-05-10)
 
 - Use `child` node instead of `sandclock` if no further ancestor information is included
