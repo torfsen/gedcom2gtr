@@ -7,7 +7,7 @@
 
 *gedcom2gtr* can be installed via [pip]:
 
-    pip install git+https://github.com/torfsen/gedcom2gtr.git@v0.3.0
+    pip install git+https://github.com/torfsen/gedcom2gtr.git@v0.4.0
 
 
 ## Usage
