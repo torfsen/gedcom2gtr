@@ -1,6 +1,8 @@
 -e .
+mypy==1.14.1
 pip-tools==7.5.2
 pre-commit==3.5.0
 pytest==8.3.5
 pytest-cov==5.0.0
 ruff==0.15.14  # Should match the version in .pre-commit-config.yaml
+typing_extensions==4.13.2

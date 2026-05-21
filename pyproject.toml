@@ -42,6 +42,11 @@ repository = "https://github.com/torfsen/gedcom2gtr"
 gedcom2gtr = "gedcom2gtr:main"
 
 
+[tool.mypy]
+strict = true
+
+
+
 [tool.pytest.ini_options]
 addopts = """
     --cov=gedcom2gtr

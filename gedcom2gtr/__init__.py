@@ -44,13 +44,14 @@ import logging
 from pathlib import Path
 import re
 import sys
-from typing import BinaryIO, Dict, List, Optional, TextIO, Tuple, Union
+from typing import BinaryIO, Dict, List, Optional, TextIO, Tuple, Union, cast
+from typing_extensions import Never
 
 import click
-from ged4py.calendar import CalendarDate
-from ged4py.date import DateValue, DateValueVisitor
-from ged4py.model import Record
-from ged4py.parser import GedcomReader
+from ged4py.calendar import CalendarDate  # type: ignore[import-untyped]
+from ged4py.date import DateValue, DateValueVisitor  # type: ignore[import-untyped]
+from ged4py.model import Record  # type: ignore[import-untyped]
+from ged4py.parser import GedcomReader  # type: ignore[import-untyped]
 
 log = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ _MONTH_NAME_TO_NUMBER = {
 }
 
 
-class GtrDateFormatter(DateValueVisitor):
+class GtrDateFormatter(DateValueVisitor):  # type: ignore[misc]
     """
     Visitor class that produces GTR string representation of dates.
     """
@@ -106,7 +107,7 @@ class GtrDateFormatter(DateValueVisitor):
         return ""
 
     def format(self, date: DateValue) -> str:
-        return date.accept(self)
+        return cast(str, date.accept(self))
 
     def _format_date(self, date: CalendarDate, uncertain: bool = False) -> str:
         calendar = "BC" if date.bc else "AD"
@@ -147,7 +148,7 @@ class Event:
             event_record.sub_tag_value("PLAC") if event_record else None,
         )
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.date or self.place)
 
     def to_gtr(self) -> Tuple[str, str]:
@@ -267,7 +268,7 @@ class Person:
         parts.append("}")
         return "".join(parts)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id!r}>"
 
     def count_ancestor_generations(self) -> int:
@@ -292,7 +293,7 @@ class Family:
     children: List[Person]
     marriage: Event
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id!r}>"
 
     def make_gtr_options(self) -> str:
@@ -523,7 +524,7 @@ def _make_main_node(
     )
 
 
-def _validate_limit(ctx, param, value):
+def _validate_limit(ctx, param, value):  # type: ignore
     if value < -1:
         raise click.BadParameter("must be >= -1")
     return value
@@ -586,7 +587,7 @@ def main(
     gedcom_file: BinaryIO,
     xref_id: str,
     output_file: TextIO,
-):
+) -> None:
     """
     Create databases for genealogytree from GEDCOM files.
 
@@ -622,7 +623,7 @@ def main(
     elif verbose > 0:
         log.setLevel(logging.INFO)
 
-    def error(s: str):
+    def error(s: str) -> Never:
         if verbose > 1:
             logging.exception(s)
             sys.exit(1)

@@ -1,7 +1,10 @@
-.PHONY: format pip-compile pre-commit tests
+.PHONY: format mypy pip-compile pre-commit tests
 
 format:
 	ruff format
+
+mypy:
+	mypy --non-interactive --install-types -m gedcom2gtr
 
 pip-compile:
 	pip-compile --quiet --strip-extras requirements.in
