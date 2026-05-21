@@ -30,7 +30,6 @@ allows you to create such databases from GEDCOM files (GEDCOM is a
 popular file format for storing genealogical information).
 """
 
-
 from importlib.metadata import version, PackageNotFoundError
 
 try:
@@ -44,55 +43,55 @@ import logging
 from pathlib import Path
 import re
 import sys
-from typing import BinaryIO, Dict, List, Optional, TextIO, Tuple, Union
+from typing import BinaryIO, Dict, List, Optional, TextIO, Tuple, Union, cast
+from typing_extensions import Never
 
 import click
-from ged4py.calendar import CalendarDate
-from ged4py.date import DateValue, DateValueVisitor
-from ged4py.model import Record
-from ged4py.parser import GedcomReader
+from ged4py.calendar import CalendarDate  # type: ignore[import-untyped]
+from ged4py.date import DateValue, DateValueVisitor  # type: ignore[import-untyped]
+from ged4py.model import Record  # type: ignore[import-untyped]
+from ged4py.parser import GedcomReader  # type: ignore[import-untyped]
 
 log = logging.getLogger(__name__)
 
 
 #: Maps GEDCOM month names to their number
 _MONTH_NAME_TO_NUMBER = {
-    'JAN': 1,
-    'FEB': 2,
-    'MAR': 3,
-    'APR': 4,
-    'MAY': 5,
-    'JUN': 6,
-    'JUL': 7,
-    'AUG': 8,
-    'SEP': 9,
-    'OCT': 10,
-    'NOV': 11,
-    'DEC': 12,
+    "JAN": 1,
+    "FEB": 2,
+    "MAR": 3,
+    "APR": 4,
+    "MAY": 5,
+    "JUN": 6,
+    "JUL": 7,
+    "AUG": 8,
+    "SEP": 9,
+    "OCT": 10,
+    "NOV": 11,
+    "DEC": 12,
 }
 
 
-class GtrDateFormatter(DateValueVisitor):
+class GtrDateFormatter(DateValueVisitor):  # type: ignore[misc]
     """
     Visitor class that produces GTR string representation of dates.
     """
+
     def visitSimple(self, date: DateValue) -> str:
         return self._format_date(date.date)
 
     def visitPeriod(self, date: DateValue) -> str:
-        return (
-            f'{self._format_date(date.date1)}/{self._format_date(date.date2)}'
-        )
+        return f"{self._format_date(date.date1)}/{self._format_date(date.date2)}"
 
     visitRange = visitPeriod
 
     def visitFrom(self, date: DateValue) -> str:
-        return f'{self._format_date(date.date)}/'
+        return f"{self._format_date(date.date)}/"
 
     visitAfter = visitFrom
 
     def visitTo(self, date: DateValue) -> str:
-        return f'/{self._format_date(date.date)}'
+        return f"/{self._format_date(date.date)}"
 
     visitBefore = visitTo
 
@@ -104,22 +103,22 @@ class GtrDateFormatter(DateValueVisitor):
     visitInterpreted = visitAbout
 
     def visitPhrase(self, date: DateValue) -> str:
-        return ''
+        return ""
 
     def format(self, date: DateValue) -> str:
-        return date.accept(self)
+        return cast(str, date.accept(self))
 
     def _format_date(self, date: CalendarDate, uncertain: bool = False) -> str:
-        calendar = 'BC' if date.bc else 'AD'
+        calendar = "BC" if date.bc else "AD"
         if uncertain:
-            calendar = f'ca{calendar}'
+            calendar = f"ca{calendar}"
         parts = [str(date.year)]
         if date.month:
-            parts.append(f'{_MONTH_NAME_TO_NUMBER[date.month]:02d}')
+            parts.append(f"{_MONTH_NAME_TO_NUMBER[date.month]:02d}")
             if date.day:
-                parts.append(f'{date.day:02d}')
-        timestamp = '-'.join(parts)
-        return f'({calendar}){timestamp}'
+                parts.append(f"{date.day:02d}")
+        timestamp = "-".join(parts)
+        return f"({calendar}){timestamp}"
 
 
 _date_formatter = GtrDateFormatter()
@@ -142,20 +141,20 @@ class Event:
     place: Optional[str]
 
     @classmethod
-    def from_record(cls, event_record: Optional[Record]) -> 'Event':
+    def from_record(cls, event_record: Optional[Record]) -> "Event":
         return cls(
-            event_record.sub_tag_value('DATE') if event_record else None,
-            event_record.sub_tag_value('PLAC') if event_record else None,
+            event_record.sub_tag_value("DATE") if event_record else None,
+            event_record.sub_tag_value("PLAC") if event_record else None,
         )
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.date or self.place)
 
     def to_gtr(self) -> Tuple[str, str]:
-        date = _date_formatter.format(self.date) if self.date else ''
+        date = _date_formatter.format(self.date) if self.date else ""
         if self.place:
-            return '', f'{{{date}}}{{{self.place}}}'
-        return '-', f'{{{date}}}'
+            return "", f"{{{date}}}{{{self.place}}}"
+        return "-", f"{{{date}}}"
 
 
 @dataclass
@@ -164,10 +163,10 @@ class Person:
     gtr_fields: Dict[str, str]
 
     #: Families in which this person is a parent/spouse
-    parent_families: List['Family']
+    parent_families: List["Family"]
 
     #: Families in which this person is a child
-    child_family: Optional['Family']
+    child_family: Optional["Family"]
 
     @classmethod
     def _split_names(cls, names: str) -> str:
@@ -203,9 +202,7 @@ class Person:
                 ("NICK", None, "nick"),
                 ("SURN", "?", "surn"),
             ):
-                if (
-                    value := (name_record.sub_tag_value(tag) or default)
-                ) is not None:
+                if (value := (name_record.sub_tag_value(tag) or default)) is not None:
                     parts.append(_cmd_wrap(cmd, cls._split_names(value)))
 
         if not parts:
@@ -220,46 +217,40 @@ class Person:
             return None
         if len(name_records) > 1:
             log.warning(
-                "Individual %s has multiple names, ignoring all but the first",
-                indi_record.xref_id,
+                "Individual %s has multiple names, ignoring all but the first", indi_record.xref_id
             )
         if (name := cls._parse_name(name_records[0])) is not None:
             return name
         return None
 
     @classmethod
-    def from_record(cls, indi_record: Record) -> 'Person':
+    def from_record(cls, indi_record: Record) -> "Person":
         """
         Create a person from a ``ged4py`` individual.
         """
         gtr_fields = {}
 
         if (name := cls._parse_names(indi_record)) is not None:
-            gtr_fields['name'] = name
+            gtr_fields["name"] = name
 
         for key, tag in [
-            ('birth', 'BIRT'),
-            ('death', 'DEAT'),
+            ("birth", "BIRT"),
+            ("death", "DEAT"),
         ]:
             event = Event.from_record(indi_record.sub_tag(tag))
             if event:
                 modifier, value = event.to_gtr()
-                gtr_fields[f'{key}{modifier}'] = value
+                gtr_fields[f"{key}{modifier}"] = value
 
-        sex = indi_record.sub_tag_value('SEX')
+        sex = indi_record.sub_tag_value("SEX")
         if sex:
-            gtr_fields['sex'] = '{female}' if sex == 'F' else '{male}'
+            gtr_fields["sex"] = "{female}" if sex == "F" else "{male}"
 
-        occupation = indi_record.sub_tag_value('OCCU')
+        occupation = indi_record.sub_tag_value("OCCU")
         if occupation:
-            gtr_fields['profession'] = f'{{{occupation}}}'
+            gtr_fields["profession"] = f"{{{occupation}}}"
 
-        return cls(
-            indi_record.xref_id.replace('@', ''),
-            gtr_fields,
-            [],
-            None,
-        )
+        return cls(indi_record.xref_id.replace("@", ""), gtr_fields, [], None)
 
     def to_gtr(self, node_type: str, include_id: bool = False) -> str:
         """
@@ -267,17 +258,17 @@ class Person:
         """
         parts = [node_type]
         if include_id:
-            parts.append(f'[id={self.id}]')
-        parts.append('{')
+            parts.append(f"[id={self.id}]")
+        parts.append("{")
         field_parts = []
         for key, value in self.gtr_fields.items():
-            field_parts.append(f'{key}={value}')
+            field_parts.append(f"{key}={value}")
         parts.append(",".join(field_parts))
-        parts.append('}')
-        return ''.join(parts)
+        parts.append("}")
+        return "".join(parts)
 
-    def __repr__(self):
-        return f'<{self.__class__.__name__} id={self.id!r}>'
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} id={self.id!r}>"
 
     def count_ancestor_generations(self) -> int:
         num = -1
@@ -301,17 +292,15 @@ class Family:
     children: List[Person]
     marriage: Event
 
-    def __repr__(self):
-        return f'<{self.__class__.__name__} id={self.id!r}>'
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} id={self.id!r}>"
 
     def make_gtr_options(self) -> str:
-        option_parts = [f'id={self.id}']
+        option_parts = [f"id={self.id}"]
         if self.marriage:
             modifier, value = self.marriage.to_gtr()
-            option_parts.append(
-                f'family database={{marriage{modifier}={value}}}'
-            )
-        return ','.join(option_parts)
+            option_parts.append(f"family database={{marriage{modifier}={value}}}")
+        return ",".join(option_parts)
 
 
 def load_gedcom(
@@ -324,27 +313,25 @@ def load_gedcom(
     id_to_family = {}
     with GedcomReader(f) as reader:
         # First pass, create persons
-        for indi_record in reader.records0('INDI'):
+        for indi_record in reader.records0("INDI"):
             person = Person.from_record(indi_record)
             id_to_person[person.id] = person
 
         # Second pass, create families
-        for fam_record in reader.records0('FAM'):
+        for fam_record in reader.records0("FAM"):
             parents = []
-            for tag in ['HUSB', 'WIFE']:
+            for tag in ["HUSB", "WIFE"]:
                 indi_record = fam_record.sub_tag(tag)
                 if indi_record:
-                    parents.append(
-                        id_to_person[indi_record.xref_id.replace('@', '')]
-                    )
+                    parents.append(id_to_person[indi_record.xref_id.replace("@", "")])
             children = [
-                id_to_person[indi_record.xref_id.replace('@', '')]
-                for indi_record in fam_record.sub_tags('CHIL')
+                id_to_person[indi_record.xref_id.replace("@", "")]
+                for indi_record in fam_record.sub_tags("CHIL")
                 if indi_record is not None
             ]
-            marriage = Event.from_record(fam_record.sub_tag('MARR'))
+            marriage = Event.from_record(fam_record.sub_tag("MARR"))
             family = Family(
-                fam_record.xref_id.replace('@', ''),
+                fam_record.xref_id.replace("@", ""),
                 parents,
                 children,
                 marriage,
@@ -379,12 +366,12 @@ def _make_child_node(person: Person, max_generations: int = -1) -> str:
     """
     if not person.parent_families or max_generations == 0:
         # No known spouse/children or recursion limit reached
-        return person.to_gtr('c', True)
+        return person.to_gtr("c", True)
     parts = [
         # We use the options from the first family here, the options for any
         # additional families go into their `union` nodes.
-        f'child[{person.parent_families[0].make_gtr_options()}]{{',
-        person.to_gtr('g', True),
+        f"child[{person.parent_families[0].make_gtr_options()}]{{",
+        person.to_gtr("g", True),
     ]
     for i, parent_family in enumerate(person.parent_families):
         # The first parent family's nodes are listed directly inside the
@@ -392,16 +379,16 @@ def _make_child_node(person: Person, max_generations: int = -1) -> str:
         # `union` nodes.
         needs_union = i > 0
         if needs_union:
-            parts.append(f'union[{parent_family.make_gtr_options()}]{{')
+            parts.append(f"union[{parent_family.make_gtr_options()}]{{")
         for parent in parent_family.parents:
             if parent != person:
-                parts.append(parent.to_gtr('p', True))
+                parts.append(parent.to_gtr("p", True))
         for child in parent_family.children:
             parts.append(_make_child_node(child, max(-1, max_generations - 1)))
         if needs_union:
             parts.append("}")  # Close the `union`
-    parts.append('}')
-    return ''.join(parts)
+    parts.append("}")
+    return "".join(parts)
 
 
 def _make_parent_node(
@@ -433,7 +420,7 @@ def _make_parent_node(
     child_family = person.child_family
     if not child_family or max_generations == 0:
         # Parents unknown or recursion limit reached
-        return person.to_gtr('p', True)
+        return person.to_gtr("p", True)
     parent_node_body = _make_parent_node_body(
         person,
         include_siblings,
@@ -442,14 +429,14 @@ def _make_parent_node(
     )
     if not parent_node_body:
         # No additional things to show
-        return person.to_gtr('p', True)
+        return person.to_gtr("p", True)
     parts = [
-        f'parent[{child_family.make_gtr_options()}]{{',
-        person.to_gtr('g', True),
+        f"parent[{child_family.make_gtr_options()}]{{",
+        person.to_gtr("g", True),
         parent_node_body,
-        '}',
+        "}",
     ]
-    return ''.join(parts)
+    return "".join(parts)
 
 
 def _make_parent_node_body(
@@ -482,23 +469,25 @@ def _make_parent_node_body(
         GTR code.
     """
     if not person.child_family or max_generations == 0:
-        return ''
+        return ""
 
     parts = []
     for parent in person.child_family.parents:
-        parts.append(_make_parent_node(
-            parent,
-            # After the first level there is no difference between siblings and
-            # ancestor siblings
-            include_ancestor_siblings,
-            include_ancestor_siblings,
-            max_generations,
-        ))
+        parts.append(
+            _make_parent_node(
+                parent,
+                # After the first level there is no difference between siblings and
+                # ancestor siblings
+                include_ancestor_siblings,
+                include_ancestor_siblings,
+                max_generations,
+            )
+        )
     if include_siblings:
         for child in person.child_family.children:
             if child != person:
-                parts.append(child.to_gtr('c', True))
-    return ''.join(parts)
+                parts.append(child.to_gtr("c", True))
+    return "".join(parts)
 
 
 def _make_main_node(
@@ -519,83 +508,74 @@ def _make_main_node(
         # Ancestor information not available or hidden
         return child_node
 
-    options = ''
+    options = ""
     if person.child_family:
         options = person.child_family.make_gtr_options()
     if options:
-        options = f'[{options}]'
-    return ''.join([
-        f'sandclock{options}{{',
-        child_node,
-        parent_node_body,
-        '}',
-    ])
+        options = f"[{options}]"
+    return "".join(
+        [
+            f"sandclock{options}{{",
+            child_node,
+            parent_node_body,
+            "}",
+        ]
+    )
 
 
-def _validate_limit(ctx, param, value):
+def _validate_limit(ctx, param, value):  # type: ignore
     if value < -1:
-        raise click.BadParameter('must be >= -1')
+        raise click.BadParameter("must be >= -1")
     return value
 
 
 @click.command()
 @click.option(
-    '--siblings/--no-siblings',
+    "--siblings/--no-siblings",
     default=True,
-    help='Whether to show the siblings of the target person',
+    help="Whether to show the siblings of the target person",
     show_default=True,
 )
 @click.option(
-    '--ancestor-siblings/--no-ancestor-siblings',
+    "--ancestor-siblings/--no-ancestor-siblings",
     default=True,
-    help='Whether to show the siblings of the target person\'s ancestors',
+    help="Whether to show the siblings of the target person's ancestors",
     show_default=True,
 )
 @click.option(
-    '--max-ancestor-generations',
+    "--max-ancestor-generations",
     default=-1,
     type=int,
-    metavar='LIMIT',
+    metavar="LIMIT",
     callback=_validate_limit,
-    help=(
-        'Maximum number of ancestor generations to show. Set to -1 for no '
-        'limit.'
-    ),
+    help=("Maximum number of ancestor generations to show. Set to -1 for no limit."),
     show_default=True,
 )
 @click.option(
-    '--max-descendant-generations',
+    "--max-descendant-generations",
     default=-1,
     type=int,
-    metavar='LIMIT',
+    metavar="LIMIT",
     callback=_validate_limit,
-    help=(
-        'Maximum number of descendant generations to show. Set to -1 for no '
-        'limit.'
-    ),
+    help=("Maximum number of descendant generations to show. Set to -1 for no limit."),
     show_default=True,
 )
 @click.option(
-    '--dynamic-generation-limits/--static-generation-limits',
+    "--dynamic-generation-limits/--static-generation-limits",
     default=False,
     help=(
-        'Whether to adjust the generation limits dynamically when the target '
-        'person has less ancestor/descendant generations than the limit. For '
-        'example, if --max-ancestor-generations and '
-        '--max-descendant-generations are both set to 3 and the target person '
-        'has only 1 descendant generation, then --max-ancestor-generations is '
-        'increased by 2 if --dynamic-generation-limits is given.'
+        "Whether to adjust the generation limits dynamically when the target person has less "
+        "ancestor/descendant generations than the limit. For example, if --max-ancestor-"
+        "generations and --max-descendant-generations are both set to 3 and the target person has "
+        "only 1 descendant generation, then --max-ancestor-generations is increased by 2 if "
+        "--dynamic-generation-limits is given."
     ),
     show_default=True,
 )
-@click.option('-v', '--verbose', count=True, help='Increase verbosity')
-@click.argument('gedcom_file', type=click.File('rb'))
-@click.argument('xref_id', type=str)
-@click.argument(
-    'output_file',
-    type=click.File('w', encoding='utf-8'),
-    default='-',
-)
+@click.option("-v", "--verbose", count=True, help="Increase verbosity")
+@click.argument("gedcom_file", type=click.File("rb"))
+@click.argument("xref_id", type=str)
+@click.argument("output_file", type=click.File("w", encoding="utf-8"), default="-")
 def main(
     siblings: bool,
     ancestor_siblings: bool,
@@ -606,7 +586,7 @@ def main(
     gedcom_file: BinaryIO,
     xref_id: str,
     output_file: TextIO,
-):
+) -> None:
     """
     Create databases for genealogytree from GEDCOM files.
 
@@ -642,7 +622,7 @@ def main(
     elif verbose > 0:
         log.setLevel(logging.INFO)
 
-    def error(s: str):
+    def error(s: str) -> Never:
         if verbose > 1:
             logging.exception(s)
             sys.exit(1)
@@ -651,50 +631,45 @@ def main(
     try:
         persons, families = load_gedcom(gedcom_file)
     except Exception as e:
-        error(f'Could not load GEDCOM data: {e}')
+        error(f"Could not load GEDCOM data: {e}")
 
     try:
-        person = persons[xref_id.replace('@', '')]
+        person = persons[xref_id.replace("@", "")]
     except KeyError:
         error(f'No person with XREF-ID "{xref_id}"')
 
     if dynamic_generation_limits:
         num_ancestor_generations = person.count_ancestor_generations()
-        log.debug(f'{num_ancestor_generations} ancestor generations')
+        log.debug(f"{num_ancestor_generations} ancestor generations")
         num_descendant_generations = person.count_descendant_generations()
-        log.debug(f'{num_descendant_generations} descendant generations')
+        log.debug(f"{num_descendant_generations} descendant generations")
 
-        if (
-            (num_ancestor_generations > max_ancestor_generations)
-            == (num_descendant_generations > max_descendant_generations)
+        if (num_ancestor_generations > max_ancestor_generations) == (
+            num_descendant_generations > max_descendant_generations
         ):
             # Limit is broken in neither direction or in both directions
             pass
         elif num_ancestor_generations > max_ancestor_generations:
             remaining = max_descendant_generations - num_descendant_generations
             if remaining:
-                log.debug(
-                    f'Dynamically increasing max_ancestor_gerations by '
-                    f'{remaining}'
-                )
+                log.debug(f"Dynamically increasing max_ancestor_gerations by {remaining}")
                 max_ancestor_generations += remaining
         else:  # num_descendant_generations > max_descendant_generations
             remaining = max_ancestor_generations - num_ancestor_generations
             if remaining:
-                log.debug(
-                    f'Dynamically increasing max_descendant_gerations by '
-                    f'{remaining}'
-                )
+                log.debug(f"Dynamically increasing max_descendant_gerations by {remaining}")
                 max_descendant_generations += remaining
 
-    output_file.write(_make_main_node(
-        person,
-        siblings,
-        ancestor_siblings,
-        max_ancestor_generations,
-        max_descendant_generations,
-    ))
+    output_file.write(
+        _make_main_node(
+            person,
+            siblings,
+            ancestor_siblings,
+            max_ancestor_generations,
+            max_descendant_generations,
+        )
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

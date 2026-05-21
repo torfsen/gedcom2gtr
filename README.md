@@ -83,13 +83,25 @@ See the file `CHANGELOG.md`.
 First clone the repository, then install the development dependencies:
 
 ```shell
-pip install -r dev-requirements.txt
+pip install -r requirements-dev.txt
+```
+
+For auto-formatting, use
+
+```shell
+make format
 ```
 
 You can run the [pre-commit] checks via
 
 ```shell
 make pre-commit
+```
+
+Mypy via
+
+```shell
+make mypy
 ```
 
 and tests via

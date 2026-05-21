@@ -1,0 +1,7 @@
+-e .
+
+-r requirements-lint.in
+-r requirements-mypy.in
+-r requirements-tests.in
+
+pip-tools==7.5.2

@@ -54,16 +54,12 @@ GEDCOM_FOOTER = """
 
 
 def prepare_gedcom(s):
-    return "\n".join(
-        stripped for line in s.splitlines() if (stripped := line.lstrip())
-    )
+    return "\n".join(stripped for line in s.splitlines() if (stripped := line.lstrip()))
 
 
 @contextmanager
 def gedcom_reader(gedcom):
-    gedcom = prepare_gedcom(
-        GEDCOM_HEADER + "\n" + gedcom + "\n" + GEDCOM_FOOTER
-    )
+    gedcom = prepare_gedcom(GEDCOM_HEADER + "\n" + gedcom + "\n" + GEDCOM_FOOTER)
     with GedcomReader(io.BytesIO(gedcom.encode("utf-8"))) as reader:
         yield reader
 
@@ -177,10 +173,7 @@ class TestPerson:
                 2 NICK Nick1, Nick2
                 2 SURN Sur1, Sur2
                 """,
-                (
-                    r"{Given1 Given2 \pref{Ruf1 Ruf2} \nick{Nick1 Nick2} "
-                    r"\surn{Sur1 Sur2}}"
-                ),
+                r"{Given1 Given2 \pref{Ruf1 Ruf2} \nick{Nick1 Nick2} \surn{Sur1 Sur2}}",
             ),
             # Multiple names
             (
@@ -200,11 +193,7 @@ class TestPerson:
 
 class TestMain:
     def run(self, fn, args, xref_id):
-        args = (
-            ['gedcom2gtr']
-            + [str(arg) for arg in args]
-            + [str(fn), str(xref_id)]
-        )
+        args = ["gedcom2gtr"] + [str(arg) for arg in args] + [str(fn), str(xref_id)]
         with patch("sys.argv", args):
             with redirect_stdout(io.StringIO()) as stdout:
                 try:
@@ -218,27 +207,20 @@ class TestMain:
         assert self.run(HERE / ged_fn, args, xref_id) == expected_output
 
     def test_defaults(self):
-        self.check("basics.ged", [], 'I0006', "default.graph")
+        self.check("basics.ged", [], "I0006", "default.graph")
 
     def test_no_siblings(self):
-        self.check(
-            "basics.ged", ['--no-siblings'], 'I0006', "no_siblings.graph"
-        )
+        self.check("basics.ged", ["--no-siblings"], "I0006", "no_siblings.graph")
 
     def test_no_ancestor_siblings(self):
-        self.check(
-            "basics.ged",
-            ['--no-ancestor-siblings'],
-            'I0006',
-            "no_ancestor_siblings.graph",
-        )
+        self.check("basics.ged", ["--no-ancestor-siblings"], "I0006", "no_ancestor_siblings.graph")
 
     @pytest.mark.parametrize("max_ancestor_generations", [0, 1, 2, 3])
     def test_max_ancestor_generations(self, max_ancestor_generations):
         self.check(
             "basics.ged",
-            ['--max-ancestor-generations', max_ancestor_generations],
-            'I0006',
+            ["--max-ancestor-generations", max_ancestor_generations],
+            "I0006",
             f"max_ancestor_generations_{max_ancestor_generations}.graph",
         )
 
@@ -246,20 +228,22 @@ class TestMain:
     def test_max_descendant_generations(self, max_descendant_generations):
         self.check(
             "basics.ged",
-            ['--max-descendant-generations', max_descendant_generations],
-            'I0006',
-            f'max_descendant_generations_{max_descendant_generations}.graph',
+            ["--max-descendant-generations", max_descendant_generations],
+            "I0006",
+            f"max_descendant_generations_{max_descendant_generations}.graph",
         )
 
     def test_dynamic_generation_limits_with_fewer_ancestors(self):
         self.check(
             "basics.ged",
             [
-                '--max-ancestor-generations', '3',
-                '--max-descendant-generations', '1',
-                '--dynamic-generation-limits',
+                "--max-ancestor-generations",
+                "3",
+                "--max-descendant-generations",
+                "1",
+                "--dynamic-generation-limits",
             ],
-            'I0006',
+            "I0006",
             "default.graph",
         )
 
@@ -267,15 +251,15 @@ class TestMain:
         self.check(
             "basics.ged",
             [
-                '--max-ancestor-generations', '1',
-                '--max-descendant-generations', '3',
-                '--dynamic-generation-limits',
+                "--max-ancestor-generations",
+                "1",
+                "--max-descendant-generations",
+                "3",
+                "--dynamic-generation-limits",
             ],
-            'I0006',
+            "I0006",
             "default.graph",
         )
 
     def test_multiple_families(self):
-        self.check(
-            'multiple_families.ged', [], 'I0002', "multiple_families.graph"
-        )
+        self.check("multiple_families.ged", [], "I0002", "multiple_families.graph")

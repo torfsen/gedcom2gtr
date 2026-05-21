@@ -1,4 +1,2 @@
-ged4py==0.4.4
 click==8.1.8
-
-packaging>=24.2  # https://github.com/pypa/setuptools/issues/4483
+ged4py==0.4.4
