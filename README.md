@@ -83,7 +83,7 @@ See the file `CHANGELOG.md`.
 First clone the repository, then install the development dependencies:
 
 ```shell
-pip install -r dev-requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 You can run the [pre-commit] checks via
