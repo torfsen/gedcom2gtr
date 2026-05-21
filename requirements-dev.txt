@@ -39,7 +39,7 @@ importlib-metadata==8.5.0
 iniconfig==1.1.1
     # via pytest
 mypy==1.14.1
-    # via -r requirements-dev.in
+    # via -r requirements-mypy.in
 mypy-extensions==1.1.0
     # via mypy
 nodeenv==1.5.0
@@ -56,7 +56,7 @@ platformdirs==4.3.6
 pluggy==1.5.0
     # via pytest
 pre-commit==3.5.0
-    # via -r requirements-dev.in
+    # via -r requirements-lint.in
 pymeeus==0.3.7
     # via
     #   convertdate
@@ -67,10 +67,10 @@ pyproject-hooks==1.2.0
     #   pip-tools
 pytest==8.3.5
     # via
-    #   -r requirements-dev.in
+    #   -r requirements-tests.in
     #   pytest-cov
 pytest-cov==5.0.0
-    # via -r requirements-dev.in
+    # via -r requirements-tests.in
 pytz==2020.1
     # via
     #   convertdate
@@ -78,7 +78,7 @@ pytz==2020.1
 pyyaml==5.3.1
     # via pre-commit
 ruff==0.15.14
-    # via -r requirements-dev.in
+    # via -r requirements-lint.in
 six==1.15.0
     # via
     #   ansel
@@ -93,7 +93,7 @@ tomli==2.2.1
     #   pytest
 typing-extensions==4.13.2
     # via
-    #   -r requirements-dev.in
+    #   -r requirements-mypy.in
     #   mypy
 virtualenv==20.29.3
     # via pre-commit
