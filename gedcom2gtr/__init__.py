@@ -30,7 +30,6 @@ allows you to create such databases from GEDCOM files (GEDCOM is a
 popular file format for storing genealogical information).
 """
 
-
 from importlib.metadata import version, PackageNotFoundError
 
 try:
