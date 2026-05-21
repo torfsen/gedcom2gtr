@@ -12,8 +12,6 @@ convertdate==2.2.1
     # via ged4py
 ged4py==0.4.4
     # via -r requirements.in
-packaging==24.2
-    # via -r requirements.in
 pymeeus==0.3.7
     # via convertdate
 pytz==2020.1
