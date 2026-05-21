@@ -50,6 +50,14 @@ addopts = """
 """
 
 
+[tool.ruff]
+exclude = [
+    "versioneer.py",
+    "gedcom2gtr/_version.py",
+]
+line-length = 100
+
+
 [tool.setuptools]
 packages = ["gedcom2gtr"]
 

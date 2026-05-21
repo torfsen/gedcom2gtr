@@ -1,4 +1,7 @@
-.PHONY: pip-compile pre-commit tests
+.PHONY: format pip-compile pre-commit tests
+
+format:
+	ruff format
 
 pip-compile:
 	pip-compile --quiet --strip-extras requirements.in

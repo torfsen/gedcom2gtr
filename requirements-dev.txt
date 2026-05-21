@@ -73,6 +73,8 @@ pytz==2020.1
     #   gedcom2gtr
 pyyaml==5.3.1
     # via pre-commit
+ruff==0.15.14
+    # via -r requirements-dev.in
 six==1.15.0
     # via
     #   ansel

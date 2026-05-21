@@ -86,6 +86,12 @@ First clone the repository, then install the development dependencies:
 pip install -r requirements-dev.txt
 ```
 
+For auto-formatting, use
+
+```shell
+make format
+```
+
 You can run the [pre-commit] checks via
 
 ```shell
