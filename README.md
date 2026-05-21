@@ -98,6 +98,12 @@ You can run the [pre-commit] checks via
 make pre-commit
 ```
 
+Mypy via
+
+```shell
+make mypy
+```
+
 and tests via
 
 ```shell
