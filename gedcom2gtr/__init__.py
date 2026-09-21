@@ -30,6 +30,8 @@ allows you to create such databases from GEDCOM files (GEDCOM is a
 popular file format for storing genealogical information).
 """
 
+from __future__ import annotations
+
 from importlib.metadata import version, PackageNotFoundError
 
 try:
@@ -43,8 +45,10 @@ import logging
 from pathlib import Path
 import re
 import sys
-from typing import BinaryIO, Dict, List, Optional, TextIO, Tuple, Union, cast
-from typing_extensions import Never
+from typing import BinaryIO, Dict, List, Optional, TextIO, Tuple, Union, cast, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing_extensions import Never
 
 import click
 from ged4py.calendar import CalendarDate  # type: ignore[import-untyped]
