@@ -171,7 +171,7 @@ class Person:
     @classmethod
     def _split_names(cls, names: str) -> str:
         # Multiple names of the same type are separated by commas
-        return re.sub(r"\s*,\s*", " ", names)
+        return re.sub(r"\s*,\s*", " ", names).strip()
 
     @classmethod
     def _parse_name(cls, name_record: Record) -> Optional[str]:
@@ -187,14 +187,30 @@ class Person:
         else:
             # Nested name structure
             given_name = name_record.sub_tag_value("GIVN")
-            rufname = name_record.sub_tag_value("_RUFNAME")
-            if given_name and rufname:
-                parts.append(cls._split_names(given_name))
-                parts.append(_cmd_wrap("pref", cls._split_names(rufname)))
+            preferred_name = name_record.sub_tag_value("_RUFNAME")
+            if given_name and preferred_name:
+                given_name = cls._split_names(given_name)
+                preferred_name = cls._split_names(preferred_name)
+                start = given_name.find(preferred_name)
+                if start == -1:
+                    log.warning(
+                        "Preferred name '%s' is not a sub-string of given name '%s'",
+                        preferred_name,
+                        given_name,
+                    )
+                    parts.append(given_name)
+                    parts.append(_cmd_wrap("pref", preferred_name))
+                else:
+                    if start > 0:
+                        parts.append(given_name[: start - 1])  # -1 to account for space
+                    parts.append(_cmd_wrap("pref", preferred_name))
+                    end = start + len(preferred_name)
+                    if end < len(given_name):
+                        parts.append(given_name[end + 1 :])  # +1 to account for space
             elif given_name:
                 parts.append(_cmd_wrap("pref", cls._split_names(given_name)))
-            elif rufname:
-                parts.append(_cmd_wrap("pref", cls._split_names(rufname)))
+            elif preferred_name:
+                parts.append(_cmd_wrap("pref", cls._split_names(preferred_name)))
             else:
                 parts.append(_cmd_wrap("pref", "?"))
 
