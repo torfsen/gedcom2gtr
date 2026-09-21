@@ -120,7 +120,7 @@ The dependencies are managed via [pip-tools]. Run
 make pip-compile
 ```
 
-to update the `*requirements.txt` files from their `*requirements.in` counterparts.
+to update the `requirements*.txt` files from their `requirements*.in` counterparts.
 
 
 ## License

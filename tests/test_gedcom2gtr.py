@@ -64,119 +64,191 @@ def gedcom_reader(gedcom):
         yield reader
 
 
+def _case(id):
+    def inner(*args, **kwargs):
+        return pytest.param(*args, id=id, **kwargs)
+
+    return inner
+
+
 class TestPerson:
     @pytest.mark.parametrize(
         "gedcom, expected",
         (
-            # No names
-            ("", None),
-            # Flat name with a single given name
-            (
+            _case("No names")("", None),
+            _case("Flat name with a single given name")(
                 """
                 1 NAME Given1
                 """,
                 r"{\pref{Given1} \surn{?}}",
             ),
-            # Flat name with a single surname
-            (
+            _case("Flat name with a single surname")(
                 """
                 1 NAME /Sur1/
                 """,
                 r"{\pref{?} \surn{Sur1}}",
             ),
-            # Flat name with a single given name and a surname
-            (
+            _case("Flat name with a single given name and a surname")(
                 """
                 1 NAME Given1 /Sur1/
                 """,
                 r"{\pref{Given1} \surn{Sur1}}",
             ),
-            # Flat name with the surname inbetween given names. This is an
-            # explicit example in the annotated GEDCOM 5.5.5 spec.
-            (
+            _case("Flat name with the surname inbetween given names")(
+                # This is an explicit example in the annotated GEDCOM 5.5.5 spec.
                 """
                 1 NAME Given1 /Sur1/ Given2
                 """,
                 r"{\pref{Given1} \surn{Sur1} Given2}",
             ),
-            # Nested name with only a given name
-            (
+            _case("Nested name with only a given name")(
                 """
                 1 NAME Should-be-ignored
                 2 GIVN Given1, Given2
                 """,
                 r"{\pref{Given1 Given2} \surn{?}}",
             ),
-            # Nested name with only a rufname
-            (
+            _case("Nested name with only a preferred name")(
                 """
                 1 NAME Should-be-ignored
-                2 _RUFNAME Ruf1, Ruf2
+                2 _RUFNAME Preferred1, Preferred2
                 """,
-                r"{\pref{Ruf1 Ruf2} \surn{?}}",
+                r"{\pref{Preferred1 Preferred2} \surn{?}}",
             ),
-            # Nested name with only a nickname
-            (
+            _case("Nested name with only a nickname")(
                 """
                 1 NAME Should-be-ignored
                 2 NICK Nick1, Nick2
                 """,
                 r"{\pref{?} \nick{Nick1 Nick2} \surn{?}}",
             ),
-            # Nested name with only a surname
-            (
+            _case("Nested name with only a surname")(
                 """
                 1 NAME Should-be-ignored
                 2 SURN Sur1, Sur2
                 """,
                 r"{\pref{?} \surn{Sur1 Sur2}}",
             ),
-            # Nested name with a given name and a rufname
-            (
+            _case(
+                "Nested name with a given name and a single preferred name that is listed as the "
+                "first given name"
+            )(
                 """
                 1 NAME Should-be-ignored
-                2 GIVN Given1, Given2
-                2 _RUFNAME Ruf1, Ruf2
+                2 GIVN Given1, Given2, Given3
+                2 _RUFNAME Given1
                 """,
-                r"{Given1 Given2 \pref{Ruf1 Ruf2} \surn{?}}",
+                r"{\pref{Given1} Given2 Given3 \surn{?}}",
             ),
-            # Nested name with a given name, a rufname, and a nickname
-            (
+            _case(
+                "Nested name with a given name and a single preferred name that is listed as the "
+                "middle given name"
+            )(
+                """
+                1 NAME Should-be-ignored
+                2 GIVN Given1, Given2, Given3
+                2 _RUFNAME Given2
+                """,
+                r"{Given1 \pref{Given2} Given3 \surn{?}}",
+            ),
+            _case(
+                "Nested name with a given name and a single preferred name that is listed as the "
+                "last given name"
+            )(
+                """
+                1 NAME Should-be-ignored
+                2 GIVN Given1, Given2, Given3
+                2 _RUFNAME Given3
+                """,
+                r"{Given1 Given2 \pref{Given3} \surn{?}}",
+            ),
+            _case(
+                "Nested name with a given name and a single preferred name that is not listed "
+                "among the given names"
+            )(
+                """
+                1 NAME Should-be-ignored
+                2 GIVN Given1, Given2, Given3
+                2 _RUFNAME Preferred1
+                """,
+                r"{Given1 Given2 Given3 \pref{Preferred1} \surn{?}}",
+            ),
+            _case(
+                "Nested name with a given name and multiple preferred names that are listed at the "
+                "beginning of the given names"
+            )(
+                """
+                1 NAME Should-be-ignored
+                2 GIVN Given1, Given2, Given3
+                2 _RUFNAME Given1, Given2
+                """,
+                r"{\pref{Given1 Given2} Given3 \surn{?}}",
+            ),
+            _case(
+                "Nested name with a given name and multiple preferred names that are listed in the "
+                "middle of the given names"
+            )(
+                """
+                1 NAME Should-be-ignored
+                2 GIVN Given1, Given2, Given3, Given4
+                2 _RUFNAME Given2, Given3
+                """,
+                r"{Given1 \pref{Given2 Given3} Given4 \surn{?}}",
+            ),
+            _case(
+                "Nested name with a given name and multiple preferred names that are listed at the "
+                "end of the given names"
+            )(
+                """
+                1 NAME Should-be-ignored
+                2 GIVN Given1, Given2, Given3
+                2 _RUFNAME Given2, Given3
+                """,
+                r"{Given1 \pref{Given2 Given3} \surn{?}}",
+            ),
+            _case(
+                "Nested name with a given name and multiple preferred names that are not listed "
+                "among the given names"
+            )(
+                """
+                1 NAME Should-be-ignored
+                2 GIVN Given1, Given2, Given3
+                2 _RUFNAME Preferred1, Preferred2
+                """,
+                r"{Given1 Given2 Given3 \pref{Preferred1 Preferred2} \surn{?}}",
+            ),
+            _case("Nested name with a given name, a preferred name, and a nickname")(
                 """
                 1 NAME Should-be-ignored
                 2 GIVN Given1, Given2
-                2 _RUFNAME Ruf1, Ruf2
+                2 _RUFNAME Preferred1, Preferred2
                 2 NICK Nick1, Nick2
                 """,
                 (
-                    r"{Given1 Given2 \pref{Ruf1 Ruf2} \nick{Nick1 Nick2} "
+                    r"{Given1 Given2 \pref{Preferred1 Preferred2} \nick{Nick1 Nick2} "
                     r"\surn{?}}"
                 ),
             ),
-            # Nested name with a given name, a rufname, and a surname
-            (
+            _case("Nested name with a given name, a preferred name, and a surname")(
                 """
                 1 NAME Should-be-ignored
                 2 GIVN Given1, Given2
-                2 _RUFNAME Ruf1, Ruf2
+                2 _RUFNAME Preferred1, Preferred2
                 2 SURN Sur1, Sur2
                 """,
-                r"{Given1 Given2 \pref{Ruf1 Ruf2} \surn{Sur1 Sur2}}",
+                r"{Given1 Given2 \pref{Preferred1 Preferred2} \surn{Sur1 Sur2}}",
             ),
-            # Nested name with a given name, a rufname, a nickname, and a
-            # surname
-            (
+            _case("Nested name with a given name, a preferred name, a nickname, and a surname")(
                 """
                 1 NAME Should-be-ignored
                 2 GIVN Given1, Given2
-                2 _RUFNAME Ruf1, Ruf2
+                2 _RUFNAME Preferred1, Preferred2
                 2 NICK Nick1, Nick2
                 2 SURN Sur1, Sur2
                 """,
-                r"{Given1 Given2 \pref{Ruf1 Ruf2} \nick{Nick1 Nick2} \surn{Sur1 Sur2}}",
+                r"{Given1 Given2 \pref{Preferred1 Preferred2} \nick{Nick1 Nick2} \surn{Sur1 Sur2}}",
             ),
-            # Multiple names
-            (
+            _case("Multiple names")(
                 """
                 1 NAME Given1
                 1 NAME Given2
