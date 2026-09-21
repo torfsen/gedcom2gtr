@@ -3,6 +3,11 @@
 The format of this file is based on [Keep a Changelog] and this project adheres to [Semantic Versioning].
 
 
+## [0.5.1] (2026-09-21)
+
+- Fix typing imports
+
+
 ## [0.5.0] (2026-09-21)
 
 - Improved support for preferred names (`_RUFNAME`)
@@ -33,6 +38,7 @@ The format of this file is based on [Keep a Changelog] and this project adheres 
 [Semantic Versioning]: http://semver.org/
 
 [Unreleased]: https://github.com/torfsen/gedcom2gtr/commits/master
+[0.5.1]: https://github.com/torfsen/gedcom2gtr//compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/torfsen/gedcom2gtr//compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/torfsen/gedcom2gtr//compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/torfsen/gedcom2gtr//compare/v0.2.0...v0.3.0
